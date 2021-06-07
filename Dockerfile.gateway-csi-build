@@ -6,10 +6,10 @@ ENV LC_ALL en_US.utf8
 ENV LANG en_US.UTF-8
 ENV PYTHONIOENCODING utf-8
 
-# Install Docker
+# Install Yum packages
 RUN yum -y install yum-utils
 RUN yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-RUN yum -y install python3 python3-pip python3-devel docker-ce docker-ce-cli containerd.io
+RUN yum -y install python3 python3-pip python3-devel docker-ce docker-ce-cli containerd.io java-11-openjdk
 RUN yum -y groupinstall 'Development Tools'
 RUN yum clean all
 
@@ -40,5 +40,9 @@ RUN go get -u github.com/vektra/mockery/...
 
 #Install stringer
 RUN go get -u golang.org/x/tools/cmd/stringer
+
+# Download Swagget Codegen CLI
+RUN mkdir /jars
+RUN curl https://repo1.maven.org/maven2/io/swagger/codegen/v3/swagger-codegen-cli/3.0.26/swagger-codegen-cli-3.0.26.jar -o /jars/swagger-codegen-cli.jar
 
 RUN chmod -R 777 $GOPATH
