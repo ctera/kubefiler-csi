@@ -1,0 +1,44 @@
+FROM centos:7
+
+# Set locale
+RUN localedef -i en_US -f UTF-8 en_US.UTF-8
+ENV LC_ALL en_US.utf8
+ENV LANG en_US.UTF-8
+ENV PYTHONIOENCODING utf-8
+
+# Install Docker
+RUN yum -y install yum-utils
+RUN yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+RUN yum -y install python3 python3-pip python3-devel docker-ce docker-ce-cli containerd.io
+RUN yum -y groupinstall 'Development Tools'
+RUN yum clean all
+
+# Add python build requirements
+RUN python3 -m pip install --upgrade pip setuptools wheel
+COPY build-requirements.txt /tmp/build-requirements.txt
+RUN pip install --no-cache-dir -r /tmp/build-requirements.txt
+
+# Download and install go
+RUN curl -sL https://dl.google.com/go/go1.16.5.linux-amd64.tar.gz | tar xz -C /usr/local
+
+ENV GOPATH=$HOME/go
+ENV PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
+
+RUN mkdir -p /go/bin
+
+#Install dep
+RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+
+# Install go static code analysis utilites
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.40.1
+
+# Install go junit reporter
+RUN go get -u github.com/jstemmer/go-junit-report
+
+#Install mockery
+RUN go get -u github.com/vektra/mockery/...
+
+#Install stringer
+RUN go get -u golang.org/x/tools/cmd/stringer
+
+RUN chmod -R 777 $GOPATH
