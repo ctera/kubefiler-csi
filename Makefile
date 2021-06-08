@@ -1,6 +1,6 @@
 # *** WARNING: Targets are meant to run in a build container - Use skipper make ***
 
-all: pylint flake8 coverage
+all: out/ctera_csi
 
 flake8:
 	flake8 ctera_gateway_openapi tests/ut
@@ -21,6 +21,9 @@ coverage: test
 build: force
 	skipper build gateway-openapi
 	docker tag gateway-openapi:$(shell git rev-parse HEAD) gateway-openapi:last_build
+
+out/ctera_csi:
+	go build -o out/ctera_csi .
 
 client:
 	GO_POST_PROCESS_FILE="/usr/local/go/bin/gofmt -w -s" \
