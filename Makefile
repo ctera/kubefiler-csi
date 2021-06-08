@@ -23,7 +23,7 @@ build: force
 	docker tag gateway-openapi:$(shell git rev-parse HEAD) gateway-openapi:last_build
 
 out/ctera_csi:
-	go build -o out/ctera_csi .
+	go build -o out/ctera_csi ./cmd/cteraplugin/
 
 client:
 	GO_POST_PROCESS_FILE="/usr/local/go/bin/gofmt -w -s" \
