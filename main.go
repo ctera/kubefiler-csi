@@ -8,7 +8,7 @@ import (
 	// "time"
 
 	// "github.com/antihax/optional"
-	ctera "github.com/ctera/ctera-gateway-csi/pkg/ctera"
+	ctera "github.com/ctera/ctera-gateway-csi/pkg/ctera-openapi"
 )
 
 func main() {

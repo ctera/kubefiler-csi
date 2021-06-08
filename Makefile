@@ -30,8 +30,8 @@ client:
 	java -jar /jars/openapi-generator-cli.jar generate \
 	-i https://raw.githubusercontent.com/ctera/ctera-gateway-openapi/master/ctera_gateway_openapi/api.yml \
 	-g go \
-	-o pkg/ctera \
-	--additional-properties packageName=ctera,packageVersion=1.0.0,isGoSubmodule=true \
+	-o pkg/ctera-openapi \
+	--additional-properties packageName=cteraopenapi,packageVersion=1.0.0,isGoSubmodule=true \
     --type-mappings=object=interface{} \
 	--enable-post-process-file
 
