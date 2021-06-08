@@ -30,6 +30,9 @@ build: force
 out/ctera-csi-driver:
 	CGO_ENABLED=0 GOOS=linux go build -ldflags ${LDFLAGS} -o out/ctera-csi-driver ./cmd/
 
+tidy:
+	go mod tidy
+
 client:
 	GO_POST_PROCESS_FILE="/usr/local/go/bin/gofmt -w -s" \
 	java -jar /jars/openapi-generator-cli.jar generate \
