@@ -2,15 +2,9 @@ package driver
 
 import (
 	"context"
-	"fmt"
-	"os"
-	"strconv"
-	"strings"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/ctera/ctera-gateway-csi/pkg/driver/internal"
-	"github.com/ctera/ctera-gateway-csi/pkg/util"
-	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"

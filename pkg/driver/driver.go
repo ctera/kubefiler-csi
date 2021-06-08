@@ -128,30 +128,9 @@ func WithEndpoint(endpoint string) func(*DriverOptions) {
 	}
 }
 
-func WithExtraTags(extraTags map[string]string) func(*DriverOptions) {
-	return func(o *DriverOptions) {
-		o.extraTags = extraTags
-	}
-}
-
-func WithExtraVolumeTags(extraVolumeTags map[string]string) func(*DriverOptions) {
-	return func(o *DriverOptions) {
-		if o.extraTags == nil && extraVolumeTags != nil {
-			klog.Warning("DEPRECATION WARNING: --extra-volume-tags is deprecated, please use --extra-tags instead")
-			o.extraTags = extraVolumeTags
-		}
-	}
-}
-
 func WithMode(mode Mode) func(*DriverOptions) {
 	return func(o *DriverOptions) {
 		o.mode = mode
-	}
-}
-
-func WithVolumeAttachLimit(volumeAttachLimit int64) func(*DriverOptions) {
-	return func(o *DriverOptions) {
-		o.volumeAttachLimit = volumeAttachLimit
 	}
 }
 

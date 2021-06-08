@@ -18,7 +18,6 @@ package driver
 
 import (
 	"fmt"
-	"strings"
 )
 
 func ValidateDriverOptions(options *DriverOptions) error {
