@@ -39,17 +39,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Instana uses the `apiToken` prefix in the `Authorization` header
 	auth := context.WithValue(unauth, ctera.ContextAccessToken, jwt)
 
-	searchFieldResults, _, err := client.UsersApi.UsersGetExecute(client.UsersApi.UsersGet(auth))
+	searchFieldResults, _, err := client.UsersApi.UsersGet(auth).Execute()
 	if err != nil {
 		fmt.Println(err)
 
 		os.Exit(1)
 	}
 
-	fmt.Println("Available search fields supported by Instana:")
+	fmt.Println("Available search fields supported by ctera:")
 	for _, field := range searchFieldResults {
 		fmt.Println(fmt.Sprintf("%s", field.Username))
 	}
