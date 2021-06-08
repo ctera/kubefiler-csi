@@ -23,6 +23,7 @@ build: force
 	docker tag gateway-openapi:$(shell git rev-parse HEAD) gateway-openapi:last_build
 
 client:
+	GO_POST_PROCESS_FILE="/usr/local/go/bin/gofmt -w -s" \
 	java -jar /jars/openapi-generator-cli.jar generate \
 	-i https://raw.githubusercontent.com/ctera/ctera-gateway-openapi/master/ctera_gateway_openapi/api.yml \
 	-g go \
