@@ -1,4 +1,5 @@
 .gitignore
+.openapi-generator-ignore
 .travis.yml
 README.md
 api/openapi.yaml
@@ -10,7 +11,7 @@ configuration.go
 docs/AclAccess.md
 docs/ClientSideCaching.md
 docs/Credentials.md
-docs/Error.md
+docs/ErrorMessage.md
 docs/FileAccessMode.md
 docs/LoginApi.md
 docs/NFSv3AccessControlEntry.md
@@ -26,7 +27,7 @@ go.sum
 model_acl_access.go
 model_client_side_caching.go
 model_credentials.go
-model_error.go
+model_error_message.go
 model_file_access_mode.go
 model_nfsv3_access_control_entry.go
 model_principal_type.go

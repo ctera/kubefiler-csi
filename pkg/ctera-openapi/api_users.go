@@ -112,7 +112,7 @@ func (a *UsersApiService) UsersGetExecute(r ApiUsersGetRequest) ([]User, *_netht
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
@@ -225,7 +225,7 @@ func (a *UsersApiService) UsersPostExecute(r ApiUsersPostRequest) (*_nethttp.Res
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
@@ -329,7 +329,7 @@ func (a *UsersApiService) UsersPutExecute(r ApiUsersPutRequest) (*_nethttp.Respo
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
@@ -429,7 +429,7 @@ func (a *UsersApiService) UsersUserNameDeleteExecute(r ApiUsersUserNameDeleteReq
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
@@ -531,7 +531,7 @@ func (a *UsersApiService) UsersUserNameGetExecute(r ApiUsersUserNameGetRequest) 
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()

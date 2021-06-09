@@ -37,6 +37,12 @@ paths:
           description: Successful Logout
         "401":
           description: Access token is missing or invalid
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       security:
       - jwt: []
       summary: Log out
@@ -64,8 +70,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: List all shares
       tags:
       - shares
@@ -85,8 +91,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: Create a new Share
       tags:
       - shares
@@ -102,14 +108,16 @@ paths:
           type: string
         style: simple
       responses:
-        "201":
+        "200":
           description: Null response
+        "401":
+          description: Access token is missing or invalid
         default:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: Delete a share
       tags:
       - shares
@@ -136,8 +144,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: Get the specified share
       tags:
       - shares
@@ -166,8 +174,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: Update existing share
       tags:
       - shares
@@ -208,8 +216,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: Remove the ACL of the share
       tags:
       - shares
@@ -239,8 +247,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: List the ACLs of the share
       tags:
       - shares
@@ -270,8 +278,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: Set the ACLs of the share (override the current ACL list)
       tags:
       - shares
@@ -301,8 +309,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: Add the ACLs of the share
       tags:
       - shares
@@ -335,8 +343,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: Remove from the screened file type of the share
       tags:
       - shares
@@ -366,8 +374,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: List the screened file types of the share
       tags:
       - shares
@@ -399,8 +407,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: Set the list of screened file types of the share (override the current
         list)
       tags:
@@ -433,8 +441,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: Add to the screened files types of the share
       tags:
       - shares
@@ -475,8 +483,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: Remove the Trusted NFS Client of the share
       tags:
       - shares
@@ -506,8 +514,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: List the Trusted NFS Clients of the share
       tags:
       - shares
@@ -537,8 +545,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: Set the Trusted NFS Clients of the share (override the current list)
       tags:
       - shares
@@ -568,8 +576,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: Add the Trusted NFS Clients of the share
       tags:
       - shares
@@ -595,8 +603,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: List all users
       tags:
       - users
@@ -608,14 +616,16 @@ paths:
               $ref: '#/components/schemas/User'
         description: User to add to the system
       responses:
-        "201":
+        "200":
           description: Null response
+        "401":
+          description: Access token is missing or invalid
         default:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: Create a User
       tags:
       - users
@@ -627,14 +637,16 @@ paths:
               $ref: '#/components/schemas/User'
         description: User Information
       responses:
-        "201":
+        "200":
           description: Null response
+        "401":
+          description: Access token is missing or invalid
         default:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: Update a user
       tags:
       - users
@@ -650,14 +662,16 @@ paths:
           type: string
         style: simple
       responses:
-        "201":
+        "200":
           description: Null response
+        "401":
+          description: Access token is missing or invalid
         default:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: Delete a user
       tags:
       - users
@@ -678,17 +692,25 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
           description: Expected response to a valid request
+        "401":
+          description: Access token is missing or invalid
         default:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-          description: unexpected error
+                $ref: '#/components/schemas/ErrorMessage'
+          description: Default error json
       summary: Info for a specific user
       tags:
       - users
 components:
   responses:
+    GenericError:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorMessage'
+      description: Default error json
     UnauthorizedError:
       description: Access token is missing or invalid
   schemas:
@@ -854,16 +876,20 @@ components:
       items:
         $ref: '#/components/schemas/User'
       type: array
-    Error:
+    ErrorMessage:
       properties:
-        code:
+        status:
           format: int32
           type: integer
-        message:
+        type:
+          type: string
+        title:
+          type: string
+        detail:
           type: string
       required:
-      - code
-      - message
+      - status
+      type: object
   securitySchemes:
     jwt:
       bearerFormat: JWT

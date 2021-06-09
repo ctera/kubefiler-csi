@@ -109,7 +109,7 @@ Class | Method | HTTP request | Description
  - [AclAccess](docs/AclAccess.md)
  - [ClientSideCaching](docs/ClientSideCaching.md)
  - [Credentials](docs/Credentials.md)
- - [Error](docs/Error.md)
+ - [ErrorMessage](docs/ErrorMessage.md)
  - [FileAccessMode](docs/FileAccessMode.md)
  - [NFSv3AccessControlEntry](docs/NFSv3AccessControlEntry.md)
  - [PrincipalType](docs/PrincipalType.md)

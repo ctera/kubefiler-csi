@@ -123,7 +123,7 @@ Other parameters are passed through a pointer to a apiLogoutPostRequest struct v
 ### HTTP request headers
 
 - **Content-Type**: Not defined
-- **Accept**: Not defined
+- **Accept**: application/json
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints)
 [[Back to Model list]](../README.md#documentation-for-models)

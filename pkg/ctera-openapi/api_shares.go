@@ -122,7 +122,7 @@ func (a *SharesApiService) CteraGatewayOpenapiApiSharesAddAclExecute(r ApiCteraG
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
@@ -230,7 +230,7 @@ func (a *SharesApiService) CteraGatewayOpenapiApiSharesAddScreenedFileTypesExecu
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
@@ -338,7 +338,7 @@ func (a *SharesApiService) CteraGatewayOpenapiApiSharesAddTrustedNfsClientsExecu
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
@@ -440,7 +440,7 @@ func (a *SharesApiService) CteraGatewayOpenapiApiSharesGetAclExecute(r ApiCteraG
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
@@ -551,7 +551,7 @@ func (a *SharesApiService) CteraGatewayOpenapiApiSharesGetScreenedFileTypesExecu
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
@@ -662,7 +662,7 @@ func (a *SharesApiService) CteraGatewayOpenapiApiSharesGetTrustedNfsClientsExecu
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
@@ -788,7 +788,7 @@ func (a *SharesApiService) CteraGatewayOpenapiApiSharesRemoveAclExecute(r ApiCte
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
@@ -897,7 +897,7 @@ func (a *SharesApiService) CteraGatewayOpenapiApiSharesRemoveScreenedFileTypeExe
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
@@ -1014,7 +1014,7 @@ func (a *SharesApiService) CteraGatewayOpenapiApiSharesRemoveTrustedNfsClientExe
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
@@ -1122,7 +1122,7 @@ func (a *SharesApiService) CteraGatewayOpenapiApiSharesSetAclExecute(r ApiCteraG
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
@@ -1230,7 +1230,7 @@ func (a *SharesApiService) CteraGatewayOpenapiApiSharesSetScreenedFileTypesExecu
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
@@ -1338,7 +1338,7 @@ func (a *SharesApiService) CteraGatewayOpenapiApiSharesSetTrustedNfsClientsExecu
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
@@ -1436,7 +1436,7 @@ func (a *SharesApiService) SharesGetExecute(r ApiSharesGetRequest) ([]Share, *_n
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
@@ -1545,7 +1545,7 @@ func (a *SharesApiService) SharesNameDeleteExecute(r ApiSharesNameDeleteRequest)
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
@@ -1647,7 +1647,7 @@ func (a *SharesApiService) SharesNameGetExecute(r ApiSharesNameGetRequest) (Shar
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
@@ -1764,7 +1764,7 @@ func (a *SharesApiService) SharesNamePutExecute(r ApiSharesNamePutRequest) (*_ne
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
@@ -1868,7 +1868,7 @@ func (a *SharesApiService) SharesPostExecute(r ApiSharesPostRequest) (*_nethttp.
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
-		var v Error
+		var v ErrorMessage
 		err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		if err != nil {
 			newErr.error = err.Error()
