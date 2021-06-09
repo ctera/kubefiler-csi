@@ -20,3 +20,5 @@
 
 # Output directory
 out/*
+
+.vscode
