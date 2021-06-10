@@ -108,6 +108,17 @@ func (c *CteraClient) DeleteShareSafe(name string)(error) {
 	return nil
 }
 
+func (c *CteraClient) AddTrustedNfsClient(shareName, address, netmask string, perm ctera.FileAccessMode) (error) {
+	trustedNfsClients := []ctera.NFSv3AccessControlEntry{*ctera.NewNFSv3AccessControlEntry(address, netmask, perm)}
+	_, err := c.client.SharesApi.CteraGatewayOpenapiApiSharesAddTrustedNfsClients(*c.ctx, shareName).NFSv3AccessControlEntry(trustedNfsClients).Execute()
+	return err
+}
+
+func (c *CteraClient) RemoveTrustedNfsClient(shareName, address, netmask string) (error) {
+	_, err := c.client.SharesApi.CteraGatewayOpenapiApiSharesRemoveTrustedNfsClient(*c.ctx, shareName).Address(address).Netmask(netmask).Execute()
+	return err
+}
+
 func (c *CteraClient) getStatusFromError(err error) (int32) {
 	genericOpenAPIError, ok := err.(ctera.GenericOpenAPIError)
 	if !ok {

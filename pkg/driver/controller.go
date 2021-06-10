@@ -231,12 +231,127 @@ func (d *controllerService) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 func (d *controllerService) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
 	klog.V(4).Infof("ControllerPublishVolume: called with args %+v", *req)
-	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
+	cteraVolumeId, err := getCteraVolumeIdFromVolumeId(req.GetVolumeId())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	var (
+		username string
+		password string
+	)
+
+	for key, value := range req.GetSecrets() {
+		switch strings.ToLower(key) {
+		case FilerUsernameKey:
+			username = value
+		case FilerPasswordKey:
+			password = value
+		default:
+			return nil, status.Errorf(codes.InvalidArgument, "Invalid secret key %s for CreateVolume", key)
+		}
+	}
+
+	if len(username) == 0 {
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Secret does not include %s", FilerUsernameKey))
+	}
+
+	if len(password) == 0 {
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Secret does not include %s", FilerPasswordKey))
+	}
+
+	client, err := GetAuthenticatedCteraClient(cteraVolumeId.filerAddress, username, password)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	share, err := client.GetShareSafe(cteraVolumeId.shareName)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if share == nil {
+		return nil, status.Error(codes.NotFound, "Volume not found")
+	}
+
+	nodeAddress := "192.168.1.1"
+	netmask := "255.255.0.0"
+	perm := ctera.RW
+
+	for _, trustedNfsClient := range share.GetTrustedNfsClients() {
+		if trustedNfsClient.GetAddress() == nodeAddress && trustedNfsClient.GetNetmask() == netmask && trustedNfsClient.GetPerm() == perm {
+			return &csi.ControllerPublishVolumeResponse{}, nil
+		}
+	}
+
+	err = client.AddTrustedNfsClient(cteraVolumeId.shareName, nodeAddress, netmask, perm)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &csi.ControllerPublishVolumeResponse{}, nil
 }
 
 func (d *controllerService) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	klog.V(4).Infof("ControllerUnpublishVolume: called with args %+v", *req)
-	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
+	cteraVolumeId, err := getCteraVolumeIdFromVolumeId(req.GetVolumeId())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	var (
+		username string
+		password string
+	)
+
+	for key, value := range req.GetSecrets() {
+		switch strings.ToLower(key) {
+		case FilerUsernameKey:
+			username = value
+		case FilerPasswordKey:
+			password = value
+		default:
+			return nil, status.Errorf(codes.InvalidArgument, "Invalid secret key %s for CreateVolume", key)
+		}
+	}
+
+	if len(username) == 0 {
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Secret does not include %s", FilerUsernameKey))
+	}
+
+	if len(password) == 0 {
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Secret does not include %s", FilerPasswordKey))
+	}
+
+	client, err := GetAuthenticatedCteraClient(cteraVolumeId.filerAddress, username, password)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	share, err := client.GetShareSafe(cteraVolumeId.shareName)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if share == nil {
+		return nil, status.Error(codes.NotFound, "Volume not found")
+	}
+
+	nodeAddress := "192.168.1.1"
+	netmask := "255.255.0.0"
+	perm := ctera.RW
+
+	for _, trustedNfsClient := range share.GetTrustedNfsClients() {
+		if trustedNfsClient.GetAddress() == nodeAddress && trustedNfsClient.GetNetmask() == netmask && trustedNfsClient.GetPerm() == perm {
+			err = client.RemoveTrustedNfsClient(cteraVolumeId.shareName, nodeAddress, netmask)
+			if err != nil {
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+			break
+		}
+	}
+
+	return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
 
 func (d *controllerService) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
