@@ -36,8 +36,18 @@ const (
 	nvmeDiskPartitionSuffix = "p"
 )
 
+// constants of keys in secrets
+const (
+	FilerUsernameKey = "username"
+	FilerPasswordKey = "password"
+)
+
 // constants of keys in volume parameters
 const (
+	FilerAddressKey = "fileraddress"
+
+	PathKey = "path"
+
 	// VolumeTypeKey represents key for volume type
 	VolumeTypeKey = "type"
 
