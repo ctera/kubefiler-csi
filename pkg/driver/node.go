@@ -118,5 +118,7 @@ func (d *nodeService) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetC
 
 func (d *nodeService) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
 	klog.V(4).Infof("NodeGetInfo: called with args %+v", *req)
-	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
+	return &csi.NodeGetInfoResponse{
+		NodeId: d.driverOptions.nodeIp,
+	}, nil
 }

@@ -41,6 +41,7 @@ type DriverOptions struct {
 	endpoint            string
 	mode                Mode
 	kubernetesClusterID string
+	nodeIp 				string
 }
 
 func NewDriver(options ...func(*DriverOptions)) (*Driver, error) {
@@ -137,6 +138,12 @@ func WithMode(mode Mode) func(*DriverOptions) {
 func WithKubernetesClusterID(clusterID string) func(*DriverOptions) {
 	return func(o *DriverOptions) {
 		o.kubernetesClusterID = clusterID
+	}
+}
+
+func WithNodeIp(nodeIp string) func(*DriverOptions) {
+	return func(o *DriverOptions) {
+		o.nodeIp = nodeIp
 	}
 }
 

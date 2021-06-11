@@ -191,6 +191,11 @@ func (d *controllerService) ControllerPublishVolume(ctx context.Context, req *cs
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	nodeAddress := req.GetNodeId()
+	if len(nodeAddress) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Node Id is empty")
+	}
+
 	client, err := d.initClientConnection(ctx, cteraVolumeId.FilerAddress, req.GetSecrets())
 	if err != nil {
 		return nil, err
@@ -205,7 +210,6 @@ func (d *controllerService) ControllerPublishVolume(ctx context.Context, req *cs
 		return nil, status.Error(codes.NotFound, "Volume not found")
 	}
 
-	nodeAddress := "192.168.1.1"
 	netmask := "255.255.0.0"
 	perm := ctera.RW
 
@@ -230,6 +234,11 @@ func (d *controllerService) ControllerUnpublishVolume(ctx context.Context, req *
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	nodeAddress := req.GetNodeId()
+	if len(nodeAddress) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Node Id is empty")
+	}
+
 	client, err := d.initClientConnection(ctx, cteraVolumeId.FilerAddress, req.GetSecrets())
 	if err != nil {
 		return nil, err
@@ -244,7 +253,6 @@ func (d *controllerService) ControllerUnpublishVolume(ctx context.Context, req *
 		return nil, status.Error(codes.NotFound, "Volume not found")
 	}
 
-	nodeAddress := "192.168.1.1"
 	netmask := "255.255.0.0"
 	perm := ctera.RW
 

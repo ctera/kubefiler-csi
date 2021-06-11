@@ -15,8 +15,13 @@ type NodeOptions struct {
 	// itself (dynamically discovering the maximum number of attachable volume per EC2 machine type, see also
 	// https://github.com/kubernetes-sigs/aws-ebs-csi-driver/issues/347).
 	VolumeAttachLimit int64
+	// NodeIp is the IP of the Node in which the node service is running on
+	// It is used for the Trusted NFS Clients list
+	// Users should pass it via "status.hostIP"
+	NodeIp string
 }
 
 func (o *NodeOptions) AddFlags(fs *flag.FlagSet) {
 	fs.Int64Var(&o.VolumeAttachLimit, "volume-attach-limit", -1, "Value for the maximum number of volumes attachable per node. If specified, the limit applies to all nodes. If not specified, the value is approximated from the instance type.")
+	fs.StringVar(&o.NodeIp, "node-ip", "", "IP Address if the host on which the service is running")
 }
