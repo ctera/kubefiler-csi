@@ -81,8 +81,6 @@ func (d *controllerService) CreateVolume(ctx context.Context, req *csi.CreateVol
 	var (
 		filerAddress string
 		path string
-		username string
-		password string
 	)
 
 	for key, value := range req.GetParameters() {
@@ -104,28 +102,9 @@ func (d *controllerService) CreateVolume(ctx context.Context, req *csi.CreateVol
 		return nil, status.Error(codes.InvalidArgument, "Filer address was not provided")
 	}
 
-	for key, value := range req.GetSecrets() {
-		switch strings.ToLower(key) {
-		case FilerUsernameKey:
-			username = value
-		case FilerPasswordKey:
-			password = value
-		default:
-			return nil, status.Errorf(codes.InvalidArgument, "Invalid parameter key %s for CreateVolume", key)
-		}
-	}
-
-	if len(username) == 0 {
-		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Secret does not include %s", FilerUsernameKey))
-	}
-
-	if len(password) == 0 {
-		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Secret does not include %s", FilerPasswordKey))
-	}
-
-	client, err := GetAuthenticatedCteraClient(filerAddress, username, password)
+	client, err := d.initClientConnection(ctx, filerAddress, req.GetSecrets())
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
 	share, err := client.GetShareSafe(shareName)
@@ -192,33 +171,9 @@ func (d *controllerService) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	var (
-		username string
-		password string
-	)
-
-	for key, value := range req.GetSecrets() {
-		switch strings.ToLower(key) {
-		case FilerUsernameKey:
-			username = value
-		case FilerPasswordKey:
-			password = value
-		default:
-			return nil, status.Errorf(codes.InvalidArgument, "Invalid parameter key %s for CreateVolume", key)
-		}
-	}
-
-	if len(username) == 0 {
-		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Secret does not include %s", FilerUsernameKey))
-	}
-
-	if len(password) == 0 {
-		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Secret does not include %s", FilerPasswordKey))
-	}
-
-	client, err := GetAuthenticatedCteraClient(cteraVolumeId.filerAddress, username, password)
+	client, err := d.initClientConnection(ctx, cteraVolumeId.filerAddress, req.GetSecrets())
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
 	err = client.DeleteShareSafe(cteraVolumeId.shareName)
@@ -236,33 +191,9 @@ func (d *controllerService) ControllerPublishVolume(ctx context.Context, req *cs
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	var (
-		username string
-		password string
-	)
-
-	for key, value := range req.GetSecrets() {
-		switch strings.ToLower(key) {
-		case FilerUsernameKey:
-			username = value
-		case FilerPasswordKey:
-			password = value
-		default:
-			return nil, status.Errorf(codes.InvalidArgument, "Invalid secret key %s for CreateVolume", key)
-		}
-	}
-
-	if len(username) == 0 {
-		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Secret does not include %s", FilerUsernameKey))
-	}
-
-	if len(password) == 0 {
-		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Secret does not include %s", FilerPasswordKey))
-	}
-
-	client, err := GetAuthenticatedCteraClient(cteraVolumeId.filerAddress, username, password)
+	client, err := d.initClientConnection(ctx, cteraVolumeId.filerAddress, req.GetSecrets())
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
 	share, err := client.GetShareSafe(cteraVolumeId.shareName)
@@ -299,33 +230,9 @@ func (d *controllerService) ControllerUnpublishVolume(ctx context.Context, req *
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	var (
-		username string
-		password string
-	)
-
-	for key, value := range req.GetSecrets() {
-		switch strings.ToLower(key) {
-		case FilerUsernameKey:
-			username = value
-		case FilerPasswordKey:
-			password = value
-		default:
-			return nil, status.Errorf(codes.InvalidArgument, "Invalid secret key %s for CreateVolume", key)
-		}
-	}
-
-	if len(username) == 0 {
-		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Secret does not include %s", FilerUsernameKey))
-	}
-
-	if len(password) == 0 {
-		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Secret does not include %s", FilerPasswordKey))
-	}
-
-	client, err := GetAuthenticatedCteraClient(cteraVolumeId.filerAddress, username, password)
+	client, err := d.initClientConnection(ctx, cteraVolumeId.filerAddress, req.GetSecrets())
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
 	share, err := client.GetShareSafe(cteraVolumeId.shareName)
@@ -352,6 +259,39 @@ func (d *controllerService) ControllerUnpublishVolume(ctx context.Context, req *
 	}
 
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
+}
+
+func (d *controllerService) initClientConnection(ctx context.Context, filerAddress string, secrets map[string]string) (*CteraClient, error) {
+	var (
+		username string
+		password string
+	)
+
+	for key, value := range secrets {
+		switch strings.ToLower(key) {
+		case FilerUsernameKey:
+			username = value
+		case FilerPasswordKey:
+			password = value
+		default:
+			return nil, status.Errorf(codes.InvalidArgument, "Invalid secret key %s for CreateVolume", key)
+		}
+	}
+
+	if len(username) == 0 {
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Secret does not include %s", FilerUsernameKey))
+	}
+
+	if len(password) == 0 {
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Secret does not include %s", FilerPasswordKey))
+	}
+
+	client, err := GetAuthenticatedCteraClient(filerAddress, username, password)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return client, nil
 }
 
 func (d *controllerService) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
