@@ -286,7 +286,7 @@ func (d *controllerService) initClientConnection(ctx context.Context, filerAddre
 		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Secret does not include %s", FilerPasswordKey))
 	}
 
-	client, err := GetAuthenticatedCteraClient(filerAddress, username, password)
+	client, err := GetAuthenticatedCteraClient(ctx, filerAddress, username, password)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

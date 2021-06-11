@@ -22,13 +22,13 @@ type CteraClient struct {
 	ctx *context.Context
 }
 
-func GetAuthenticatedCteraClient(filerAddress, username, password string) (*CteraClient, error) {
+func GetAuthenticatedCteraClient(ctx context.Context, filerAddress, username, password string) (*CteraClient, error) {
 	client, err := NewCteraClient(filerAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	err = client.Authenticate(username, password)
+	err = client.Authenticate(ctx, username, password)
 	if err != nil {
 		return nil, err
 	}
@@ -52,24 +52,22 @@ func NewCteraClient(filerAddress string) (*CteraClient, error) {
 	}, nil
 }
 
-func (c *CteraClient) Authenticate(username, password string) (error) {
+func (c *CteraClient) Authenticate(ctx context.Context, username, password string) (error) {
 	if c.ctx != nil {
 		return CteraClientError{
 			error: "Already authenticated",
 		}
 	}
 
-	unauth := context.Background()
 	credentials := ctera.NewCredentials(username, password)
-
-	jwt, _, err := c.client.LoginApi.LoginPost(unauth).Credentials(*credentials).Execute()
+	jwt, _, err := c.client.LoginApi.LoginPost(ctx).Credentials(*credentials).Execute()
 	if err != nil {
 		klog.Error(err)
 		return err
 	}
 
-	auth := context.WithValue(unauth, ctera.ContextAccessToken, jwt)
-	c.ctx = &auth
+	authenticated_ctx := context.WithValue(ctx, ctera.ContextAccessToken, jwt)
+	c.ctx = &authenticated_ctx
 
 	return nil
 }
