@@ -23,7 +23,7 @@ func (c *CteraVolumeId) ToVolumeId() (*string, error) {
 
 func getCteraVolumeIdFromVolumeId(volumeId string) (*CteraVolumeId, error){
 	if len(volumeId) == 0 {
-		return nil, errors.New("Volume ID missing in request")
+		return nil, errors.New("volume ID missing in request")
 	}
 
 	var cteraVolumeId CteraVolumeId
