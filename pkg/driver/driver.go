@@ -54,7 +54,7 @@ func NewDriver(options ...func(*DriverOptions)) (*Driver, error) {
 		option(&driverOptions)
 	}
 
-	if err := ValidateDriverOptions(&driverOptions); err != nil {
+	if err := validateDriverOptions(&driverOptions); err != nil {
 		return nil, fmt.Errorf("invalid driver options: %v", err)
 	}
 
@@ -138,4 +138,20 @@ func WithKubernetesClusterID(clusterID string) func(*DriverOptions) {
 	return func(o *DriverOptions) {
 		o.kubernetesClusterID = clusterID
 	}
+}
+
+func validateDriverOptions(options *DriverOptions) error {
+	if err := validateMode(options.mode); err != nil {
+		return fmt.Errorf("invalid mode: %v", err)
+	}
+
+	return nil
+}
+
+func validateMode(mode Mode) error {
+	if mode != AllMode && mode != ControllerMode && mode != NodeMode {
+		return fmt.Errorf("mode is not supported (actual: %s, supported: %v)", mode, []Mode{AllMode, ControllerMode, NodeMode})
+	}
+
+	return nil
 }
