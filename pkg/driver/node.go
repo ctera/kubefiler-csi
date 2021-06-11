@@ -67,21 +67,6 @@ func newNodeService(driverOptions *DriverOptions) nodeService {
 	}
 }
 
-func (d *nodeService) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
-	klog.V(4).Infof("NodeStageVolume: called with args %+v", *req)
-	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
-}
-
-func (d *nodeService) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
-	klog.V(4).Infof("NodeUnstageVolume: called with args %+v", *req)
-	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
-}
-
-func (d *nodeService) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
-	klog.V(4).Infof("NodeExpandVolume: called with args %+v", *req)
-	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
-}
-
 func (d *nodeService) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	klog.V(4).Infof("NodePublishVolume: called with args %+v", *req)
 	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
@@ -118,4 +103,19 @@ func (d *nodeService) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoReque
 	return &csi.NodeGetInfoResponse{
 		NodeId: d.driverOptions.nodeIp,
 	}, nil
+}
+
+func (d *nodeService) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
+	klog.V(4).Infof("NodeStageVolume: called with args %+v", *req)
+	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
+}
+
+func (d *nodeService) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
+	klog.V(4).Infof("NodeUnstageVolume: called with args %+v", *req)
+	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
+}
+
+func (d *nodeService) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
+	klog.V(4).Infof("NodeExpandVolume: called with args %+v", *req)
+	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
 }
