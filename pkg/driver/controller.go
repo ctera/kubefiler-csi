@@ -261,6 +261,27 @@ func (d *controllerService) ControllerUnpublishVolume(ctx context.Context, req *
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
 
+func (d *controllerService) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
+	klog.V(4).Infof("ControllerGetCapabilities: called with args %+v", *req)
+	var caps []*csi.ControllerServiceCapability
+	for _, cap := range controllerCaps {
+		c := &csi.ControllerServiceCapability{
+			Type: &csi.ControllerServiceCapability_Rpc{
+				Rpc: &csi.ControllerServiceCapability_RPC{
+					Type: cap,
+				},
+			},
+		}
+		caps = append(caps, c)
+	}
+	return &csi.ControllerGetCapabilitiesResponse{Capabilities: caps}, nil
+}
+
+func (d *controllerService) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
+	klog.V(4).Infof("ValidateVolumeCapabilities: called with args %+v", *req)
+	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
+}
+
 func (d *controllerService) initClientConnection(ctx context.Context, filerAddress string, secrets map[string]string) (*CteraClient, error) {
 	var (
 		username string
@@ -294,22 +315,6 @@ func (d *controllerService) initClientConnection(ctx context.Context, filerAddre
 	return client, nil
 }
 
-func (d *controllerService) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {
-	klog.V(4).Infof("ControllerGetCapabilities: called with args %+v", *req)
-	var caps []*csi.ControllerServiceCapability
-	for _, cap := range controllerCaps {
-		c := &csi.ControllerServiceCapability{
-			Type: &csi.ControllerServiceCapability_Rpc{
-				Rpc: &csi.ControllerServiceCapability_RPC{
-					Type: cap,
-				},
-			},
-		}
-		caps = append(caps, c)
-	}
-	return &csi.ControllerGetCapabilitiesResponse{Capabilities: caps}, nil
-}
-
 func (d *controllerService) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
 	klog.V(4).Infof("GetCapacity: called with args %+v", *req)
 	return nil, status.Error(codes.Unimplemented, "")
@@ -318,11 +323,6 @@ func (d *controllerService) GetCapacity(ctx context.Context, req *csi.GetCapacit
 func (d *controllerService) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
 	klog.V(4).Infof("ListVolumes: called with args %+v", *req)
 	return nil, status.Error(codes.Unimplemented, "")
-}
-
-func (d *controllerService) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
-	klog.V(4).Infof("ValidateVolumeCapabilities: called with args %+v", *req)
-	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
 }
 
 func (d *controllerService) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
