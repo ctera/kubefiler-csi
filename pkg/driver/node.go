@@ -41,8 +41,6 @@ var (
 var (
 	// nodeCaps represents the capability of node service.
 	nodeCaps = []csi.NodeServiceCapability_RPC_Type{
-		csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME,
-		csi.NodeServiceCapability_RPC_EXPAND_VOLUME,
 		csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
 	}
 )
@@ -101,19 +99,18 @@ func (d *nodeService) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVo
 
 func (d *nodeService) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	klog.V(4).Infof("NodeGetCapabilities: called with args %+v", *req)
-	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
-	// var caps []*csi.NodeServiceCapability
-	// for _, cap := range nodeCaps {
-	// 	c := &csi.NodeServiceCapability{
-	// 		Type: &csi.NodeServiceCapability_Rpc{
-	// 			Rpc: &csi.NodeServiceCapability_RPC{
-	// 				Type: cap,
-	// 			},
-	// 		},
-	// 	}
-	// 	caps = append(caps, c)
-	// }
-	// return &csi.NodeGetCapabilitiesResponse{Capabilities: caps}, nil
+	var caps []*csi.NodeServiceCapability
+	for _, cap := range nodeCaps {
+		c := &csi.NodeServiceCapability{
+			Type: &csi.NodeServiceCapability_Rpc{
+				Rpc: &csi.NodeServiceCapability_RPC{
+					Type: cap,
+				},
+			},
+		}
+		caps = append(caps, c)
+	}
+	return &csi.NodeGetCapabilitiesResponse{Capabilities: caps}, nil
 }
 
 func (d *nodeService) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
