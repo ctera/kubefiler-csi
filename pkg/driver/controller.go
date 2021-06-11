@@ -2,7 +2,6 @@ package driver
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -30,31 +29,6 @@ var (
 		csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
 	}
 )
-
-type CteraVolumeId struct {
-	FilerAddress string `json:"filer_address"`
-	ShareName  	 string `json:"share_name"`
-	Path 		 string `json:"path"`
-}
-
-func (c *CteraVolumeId) toVolumeId() (*string, error) {
-	bytes, err := json.Marshal(c)
-	if err != nil {
-		return nil, err
-	}
-
-	ret := string(bytes)
-	return &ret, nil
-}
-
-func getCteraVolumeIdFromVolumeId(volumeId string) (*CteraVolumeId, error){
-	var cteraVolumeId CteraVolumeId
-	err := json.Unmarshal([]byte(volumeId), &cteraVolumeId)
-	if err != nil {
-		return nil, err
-	}
-	return &cteraVolumeId, nil
-}
 
 // controllerService represents the controller service of CSI driver
 type controllerService struct {
@@ -149,7 +123,7 @@ func newCreateVolumeResponse(server string, share *ctera.Share) (*csi.CreateVolu
 		Path: share.GetDirectory(),
 	}
 
-	volumeId, err := cteraVolumeId.toVolumeId()
+	volumeId, err := cteraVolumeId.ToVolumeId()
 	if err != nil {
 		return nil, err
 	}
