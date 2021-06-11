@@ -279,7 +279,37 @@ func (d *controllerService) ControllerGetCapabilities(ctx context.Context, req *
 
 func (d *controllerService) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	klog.V(4).Infof("ValidateVolumeCapabilities: called with args %+v", *req)
-	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
+	cteraVolumeId, err := getCteraVolumeIdFromVolumeId(req.GetVolumeId())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	volCaps := req.GetVolumeCapabilities()
+	if len(volCaps) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume capabilities not provided")
+	}
+
+	client, err := d.initClientConnection(ctx, cteraVolumeId.filerAddress, req.GetSecrets())
+	if err != nil {
+		return nil, err
+	}
+
+	share, err := client.GetShareSafe(cteraVolumeId.shareName)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if share == nil {
+		return nil, status.Error(codes.NotFound, "Volume not found")
+	}
+
+	var confirmed *csi.ValidateVolumeCapabilitiesResponse_Confirmed
+	if isValidVolumeCapabilities(volCaps) {
+		confirmed = &csi.ValidateVolumeCapabilitiesResponse_Confirmed{VolumeCapabilities: volCaps}
+	}
+	return &csi.ValidateVolumeCapabilitiesResponse{
+		Confirmed: confirmed,
+	}, nil
 }
 
 func (d *controllerService) initClientConnection(ctx context.Context, filerAddress string, secrets map[string]string) (*CteraClient, error) {
@@ -313,6 +343,25 @@ func (d *controllerService) initClientConnection(ctx context.Context, filerAddre
 	}
 
 	return client, nil
+}
+
+func isValidVolumeCapabilities(volCaps []*csi.VolumeCapability) bool {
+	hasSupport := func(cap *csi.VolumeCapability) bool {
+		for _, c := range volumeCaps {
+			if c.GetMode() == cap.AccessMode.GetMode() {
+				return true
+			}
+		}
+		return false
+	}
+
+	foundAll := true
+	for _, c := range volCaps {
+		if !hasSupport(c) {
+			foundAll = false
+		}
+	}
+	return foundAll
 }
 
 func (d *controllerService) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
