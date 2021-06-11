@@ -2,84 +2,121 @@ package driver
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"strings"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/ctera/ctera-gateway-csi/pkg/driver/internal"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
-)
-
-const (
-	// FSTypeExt2 represents the ext2 filesystem type
-	FSTypeExt2 = "ext2"
-	// FSTypeExt3 represents the ext3 filesystem type
-	FSTypeExt3 = "ext3"
-	// FSTypeExt4 represents the ext4 filesystem type
-	FSTypeExt4 = "ext4"
-	// FSTypeXfs represents te xfs filesystem type
-	FSTypeXfs = "xfs"
-
-	// default file system type to be used when it is not provided
-	defaultFsType = FSTypeExt4
-
-	// defaultMaxEBSVolumes is the maximum number of volumes that an AWS instance can have attached.
-	// More info at https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/volume_limits.html
-	defaultMaxEBSVolumes = 39
-
-	// defaultMaxEBSNitroVolumes is the limit of volumes for some smaller instances, like c5 and m5.
-	defaultMaxEBSNitroVolumes = 25
-
-	// VolumeOperationAlreadyExists is message fmt returned to CO when there is another in-flight call on the given volumeID
-	VolumeOperationAlreadyExists = "An operation with the given volume=%q is already in progress"
-)
-
-var (
-	ValidFSTypes = []string{FSTypeExt2, FSTypeExt3, FSTypeExt4, FSTypeXfs}
+	mount "k8s.io/mount-utils"
 )
 
 var (
 	// nodeCaps represents the capability of node service.
-	nodeCaps = []csi.NodeServiceCapability_RPC_Type{
-		csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
-	}
+	nodeCaps = []csi.NodeServiceCapability_RPC_Type{}
 )
 
 // nodeService represents the node service of CSI driver
 type nodeService struct {
-	mounter       Mounter
+	mounter       mount.Interface
 	inFlight      *internal.InFlight
 	driverOptions *DriverOptions
 }
 
 // newNodeService creates a new node service
-// it panics if failed to create the service
 func newNodeService(driverOptions *DriverOptions) nodeService {
-	nodeMounter, err := newNodeMounter()
-	if err != nil {
-		panic(err)
-	}
-
 	return nodeService{
-		mounter:       nodeMounter,
+		mounter:       mount.New(""),
 		inFlight:      internal.NewInFlight(),
 		driverOptions: driverOptions,
 	}
 }
 
-func (d *nodeService) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
+func (ns *nodeService) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	klog.V(4).Infof("NodePublishVolume: called with args %+v", *req)
-	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
+	cteraVolumeId, err := getCteraVolumeIdFromVolumeId(req.GetVolumeId())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if req.GetVolumeCapability() == nil {
+		return nil, status.Error(codes.InvalidArgument, "Volume capability missing in request")
+	}
+	targetPath := req.GetTargetPath()
+	if len(targetPath) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Target path not provided")
+	}
+
+	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if err := os.MkdirAll(targetPath, 0750); err != nil {
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+			notMnt = true
+		} else {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	}
+	if !notMnt {
+		return &csi.NodePublishVolumeResponse{}, nil
+	}
+
+	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
+	if req.GetReadonly() {
+		mountOptions = append(mountOptions, "ro")
+	}
+
+	s := cteraVolumeId.FilerAddress
+	ep := cteraVolumeId.ShareName
+	source := fmt.Sprintf("%s:%s", s, ep)
+
+	klog.V(2).Infof("NodePublishVolume: volumeID(%v) source(%s) targetPath(%s) mountflags(%v)", cteraVolumeId.ShareName, source, targetPath, mountOptions)
+	err = ns.mounter.Mount(source, targetPath, "nfs", mountOptions)
+	if err != nil {
+		if os.IsPermission(err) {
+			return nil, status.Error(codes.PermissionDenied, err.Error())
+		}
+		if strings.Contains(err.Error(), "invalid argument") {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &csi.NodePublishVolumeResponse{}, nil
 }
 
 func (d *nodeService) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	klog.V(4).Infof("NodeUnpublishVolume: called with args %+v", *req)
-	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
-}
+	cteraVolumeId, err := getCteraVolumeIdFromVolumeId(req.GetVolumeId())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	targetPath := req.GetTargetPath()
+	if len(targetPath) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
+	}
 
-func (d *nodeService) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
-	klog.V(4).Infof("NodeGetVolumeStats: called with args %+v", *req)
-	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
+	notMnt, err := d.mounter.IsLikelyNotMountPoint(targetPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, status.Error(codes.NotFound, "Targetpath not found")
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if notMnt {
+		return nil, status.Error(codes.NotFound, "Volume not mounted")
+	}
+
+	klog.V(2).Infof("NodeUnpublishVolume: CleanupMountPoint %s on volumeID(%s)", targetPath, cteraVolumeId.ShareName)
+	err = mount.CleanupMountPoint(targetPath, d.mounter, false)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
 func (d *nodeService) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
@@ -103,6 +140,11 @@ func (d *nodeService) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoReque
 	return &csi.NodeGetInfoResponse{
 		NodeId: d.driverOptions.nodeIp,
 	}, nil
+}
+
+func (d *nodeService) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
+	klog.V(4).Infof("NodeGetVolumeStats: called with args %+v", *req)
+	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
 }
 
 func (d *nodeService) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
