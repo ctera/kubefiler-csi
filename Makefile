@@ -25,9 +25,9 @@ coverage: test
 	# Create a coverage report and validate the given threshold
 	coverage html --fail-under=90 -d reports/coverage
 
-build: force
-	skipper build gateway-openapi
-	docker tag gateway-openapi:$(shell git rev-parse HEAD) gateway-openapi:last_build
+build: out/ctera-csi-driver
+	skipper build gateway-csi
+	docker tag gateway-csi:${GIT_COMMIT} gateway-csi:last_build
 
 out/ctera-csi-driver: ${SOURCES}
 	CGO_ENABLED=0 GOOS=linux go build -ldflags ${LDFLAGS} -o out/ctera-csi-driver ./cmd/

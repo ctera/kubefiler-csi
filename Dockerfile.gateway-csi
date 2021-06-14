@@ -1,0 +1,10 @@
+ARG ARCH=amd64
+
+FROM centos:7
+
+RUN yum -y install nfs-utils
+
+# Copy ctera-csi-driver from build _output directory
+COPY out/ctera-csi-driver /ctera-csi-driver
+
+ENTRYPOINT ["/ctera-csi-driver"]
