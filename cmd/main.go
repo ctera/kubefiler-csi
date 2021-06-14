@@ -15,7 +15,6 @@ func main() {
 	drv, err := driver.NewDriver(
 		driver.WithEndpoint(options.ServerOptions.Endpoint),
 		driver.WithMode(options.DriverMode),
-		driver.WithKubernetesClusterID(options.ControllerOptions.KubernetesClusterID),
 		driver.WithNodeIp(options.NodeOptions.NodeIp),
 	)
 	if err != nil {
