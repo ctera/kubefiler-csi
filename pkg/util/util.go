@@ -11,29 +11,29 @@ import (
 )
 
 const (
-	GiB = 1024 * 1024 * 1024
+	gib = 1024 * 1024 * 1024
 )
 
 // RoundUpBytes rounds up the volume size in bytes upto multiplications of GiB
 // in the unit of Bytes
 func RoundUpBytes(volumeSizeBytes int64) int64 {
-	return roundUpSize(volumeSizeBytes, GiB) * GiB
+	return roundUpSize(volumeSizeBytes, gib) * gib
 }
 
 // RoundUpGiB rounds up the volume size in bytes upto multiplications of GiB
 // in the unit of GiB
 func RoundUpGiB(volumeSizeBytes int64) int64 {
-	return roundUpSize(volumeSizeBytes, GiB)
+	return roundUpSize(volumeSizeBytes, gib)
 }
 
 // BytesToGiB converts Bytes to GiB
 func BytesToGiB(volumeSizeBytes int64) int64 {
-	return volumeSizeBytes / GiB
+	return volumeSizeBytes / gib
 }
 
 // GiBToBytes converts GiB to Bytes
 func GiBToBytes(volumeSizeGiB int64) int64 {
-	return volumeSizeGiB * GiB
+	return volumeSizeGiB * gib
 }
 
 func ParseEndpoint(endpoint string) (string, string, error) {

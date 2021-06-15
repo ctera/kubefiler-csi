@@ -23,11 +23,11 @@ var (
 type nodeService struct {
 	mounter       mount.Interface
 	inFlight      *internal.InFlight
-	driverOptions *DriverOptions
+	driverOptions *Options
 }
 
 // newNodeService creates a new node service
-func newNodeService(driverOptions *DriverOptions) nodeService {
+func newNodeService(driverOptions *Options) nodeService {
 	return nodeService{
 		mounter:       mount.New(""),
 		inFlight:      internal.NewInFlight(),
@@ -37,7 +37,7 @@ func newNodeService(driverOptions *DriverOptions) nodeService {
 
 func (ns *nodeService) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	klog.V(4).Infof("NodePublishVolume: called with args %+v", *req)
-	cteraVolumeId, err := getCteraVolumeIdFromVolumeId(req.GetVolumeId())
+	cteraVolumeID, err := getCteraVolumeIDFromVolumeID(req.GetVolumeId())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -69,11 +69,11 @@ func (ns *nodeService) NodePublishVolume(ctx context.Context, req *csi.NodePubli
 		mountOptions = append(mountOptions, "ro")
 	}
 
-	s := cteraVolumeId.FilerAddress
-	ep := cteraVolumeId.ShareName
+	s := cteraVolumeID.FilerAddress
+	ep := cteraVolumeID.ShareName
 	source := fmt.Sprintf("%s:%s", s, ep)
 
-	klog.V(2).Infof("NodePublishVolume: volumeID(%v) source(%s) targetPath(%s) mountflags(%v)", cteraVolumeId.ShareName, source, targetPath, mountOptions)
+	klog.V(2).Infof("NodePublishVolume: volumeID(%v) source(%s) targetPath(%s) mountflags(%v)", cteraVolumeID.ShareName, source, targetPath, mountOptions)
 	err = ns.mounter.Mount(source, targetPath, "nfs", mountOptions)
 	if err != nil {
 		if os.IsPermission(err) {
@@ -88,9 +88,9 @@ func (ns *nodeService) NodePublishVolume(ctx context.Context, req *csi.NodePubli
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
-func (d *nodeService) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
+func (ns *nodeService) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	klog.V(4).Infof("NodeUnpublishVolume: called with args %+v", *req)
-	cteraVolumeId, err := getCteraVolumeIdFromVolumeId(req.GetVolumeId())
+	cteraVolumeID, err := getCteraVolumeIDFromVolumeID(req.GetVolumeId())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -99,7 +99,7 @@ func (d *nodeService) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
 	}
 
-	notMnt, err := d.mounter.IsLikelyNotMountPoint(targetPath)
+	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, status.Error(codes.NotFound, "Targetpath not found")
@@ -110,8 +110,8 @@ func (d *nodeService) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 		return nil, status.Error(codes.NotFound, "Volume not mounted")
 	}
 
-	klog.V(2).Infof("NodeUnpublishVolume: CleanupMountPoint %s on volumeID(%s)", targetPath, cteraVolumeId.ShareName)
-	err = mount.CleanupMountPoint(targetPath, d.mounter, false)
+	klog.V(2).Infof("NodeUnpublishVolume: CleanupMountPoint %s on volumeID(%s)", targetPath, cteraVolumeID.ShareName)
+	err = mount.CleanupMountPoint(targetPath, ns.mounter, false)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -119,7 +119,7 @@ func (d *nodeService) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpu
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
-func (d *nodeService) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
+func (ns *nodeService) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
 	klog.V(4).Infof("NodeGetCapabilities: called with args %+v", *req)
 	var caps []*csi.NodeServiceCapability
 	for _, cap := range nodeCaps {
@@ -135,29 +135,29 @@ func (d *nodeService) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetC
 	return &csi.NodeGetCapabilitiesResponse{Capabilities: caps}, nil
 }
 
-func (d *nodeService) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
+func (ns *nodeService) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
 	klog.V(4).Infof("NodeGetInfo: called with args %+v", *req)
 	return &csi.NodeGetInfoResponse{
-		NodeId: d.driverOptions.nodeIp,
+		NodeId: ns.driverOptions.nodeIP,
 	}, nil
 }
 
-func (d *nodeService) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
+func (ns *nodeService) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
 	klog.V(4).Infof("NodeGetVolumeStats: called with args %+v", *req)
 	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
 }
 
-func (d *nodeService) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
+func (ns *nodeService) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	klog.V(4).Infof("NodeStageVolume: called with args %+v", *req)
 	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
 }
 
-func (d *nodeService) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
+func (ns *nodeService) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
 	klog.V(4).Infof("NodeUnstageVolume: called with args %+v", *req)
 	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
 }
 
-func (d *nodeService) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
+func (ns *nodeService) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
 	klog.V(4).Infof("NodeExpandVolume: called with args %+v", *req)
 	return nil, status.Error(codes.Unimplemented, "Method not yet implemented")
 }

@@ -24,9 +24,7 @@ const (
 )
 
 const (
-	DriverName = "csi.ctera.com"
-
-	WellKnownTopologyKey = "topology.kubernetes.io/zone"
+	driverName = "csi.ctera.com"
 )
 
 type Driver struct {
@@ -34,19 +32,19 @@ type Driver struct {
 	nodeService
 
 	srv     *grpc.Server
-	options *DriverOptions
+	options *Options
 }
 
-type DriverOptions struct {
+type Options struct {
 	endpoint string
 	mode     Mode
-	nodeIp   string
+	nodeIP   string
 }
 
-func NewDriver(options ...func(*DriverOptions)) (*Driver, error) {
-	klog.V(4).Infof("Driver: %v Version: %v", DriverName, driverVersion)
+func NewDriver(options ...func(*Options)) (*Driver, error) {
+	klog.V(4).Infof("Driver: %v Version: %v", driverName, driverVersion)
 
-	driverOptions := DriverOptions{
+	driverOptions := Options{
 		endpoint: DefaultCSIEndpoint,
 		mode:     AllMode,
 	}
@@ -122,25 +120,25 @@ func (d *Driver) Stop() {
 	d.srv.Stop()
 }
 
-func WithEndpoint(endpoint string) func(*DriverOptions) {
-	return func(o *DriverOptions) {
+func WithEndpoint(endpoint string) func(*Options) {
+	return func(o *Options) {
 		o.endpoint = endpoint
 	}
 }
 
-func WithMode(mode Mode) func(*DriverOptions) {
-	return func(o *DriverOptions) {
+func WithMode(mode Mode) func(*Options) {
+	return func(o *Options) {
 		o.mode = mode
 	}
 }
 
-func WithNodeIp(nodeIp string) func(*DriverOptions) {
-	return func(o *DriverOptions) {
-		o.nodeIp = nodeIp
+func WithNodeIP(nodeIP string) func(*Options) {
+	return func(o *Options) {
+		o.nodeIP = nodeIP
 	}
 }
 
-func validateDriverOptions(options *DriverOptions) error {
+func validateDriverOptions(options *Options) error {
 	if err := validateMode(options.mode); err != nil {
 		return fmt.Errorf("invalid mode: %v", err)
 	}

@@ -33,12 +33,12 @@ var (
 // controllerService represents the controller service of CSI driver
 type controllerService struct {
 	inFlight      *internal.InFlight
-	driverOptions *DriverOptions
+	driverOptions *Options
 }
 
 // newControllerService creates a new controller service
 // it panics if failed to create the service
-func newControllerService(driverOptions *DriverOptions) controllerService {
+func newControllerService(driverOptions *Options) controllerService {
 	return controllerService{
 		inFlight:      internal.NewInFlight(),
 		driverOptions: driverOptions,
@@ -93,9 +93,8 @@ func (d *controllerService) CreateVolume(ctx context.Context, req *csi.CreateVol
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 			return createVolumeResponse, nil
-		} else {
-			return nil, status.Error(codes.AlreadyExists, "Share already exists with different parameters")
 		}
+		return nil, status.Error(codes.AlreadyExists, "Share already exists with different parameters")
 	}
 
 	share, err = client.CreateShare(shareName, path)
@@ -105,7 +104,10 @@ func (d *controllerService) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	createVolumeResponse, err := newCreateVolumeResponse(filerAddress, share)
 	if err != nil {
-		client.DeleteShareSafe(shareName)
+		deleteErr := client.DeleteShareSafe(shareName)
+		if deleteErr != nil {
+			klog.Errorf("cleanup Failed: %s", deleteErr.Error())
+		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -117,20 +119,20 @@ func (d *controllerService) canReuseShare(share *ctera.Share, path string) bool 
 }
 
 func newCreateVolumeResponse(server string, share *ctera.Share) (*csi.CreateVolumeResponse, error) {
-	cteraVolumeId := CteraVolumeId{
+	cteraVolumeID := CteraVolumeID{
 		FilerAddress: server,
 		ShareName:    share.GetName(),
 		Path:         share.GetDirectory(),
 	}
 
-	volumeId, err := cteraVolumeId.ToVolumeId()
+	volumeID, err := cteraVolumeID.ToVolumeID()
 	if err != nil {
 		return nil, err
 	}
 
 	return &csi.CreateVolumeResponse{
 			Volume: &csi.Volume{
-				VolumeId:      *volumeId,
+				VolumeId:      *volumeID,
 				CapacityBytes: 0,
 				VolumeContext: map[string]string{},
 			},
@@ -140,17 +142,17 @@ func newCreateVolumeResponse(server string, share *ctera.Share) (*csi.CreateVolu
 
 func (d *controllerService) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	klog.V(4).Infof("DeleteVolume: called with args: %+v", *req)
-	cteraVolumeId, err := getCteraVolumeIdFromVolumeId(req.GetVolumeId())
+	cteraVolumeID, err := getCteraVolumeIDFromVolumeID(req.GetVolumeId())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	client, err := d.initClientConnection(ctx, cteraVolumeId.FilerAddress, req.GetSecrets())
+	client, err := d.initClientConnection(ctx, cteraVolumeID.FilerAddress, req.GetSecrets())
 	if err != nil {
 		return nil, err
 	}
 
-	err = client.DeleteShareSafe(cteraVolumeId.ShareName)
+	err = client.DeleteShareSafe(cteraVolumeID.ShareName)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -160,7 +162,7 @@ func (d *controllerService) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 
 func (d *controllerService) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
 	klog.V(4).Infof("ControllerPublishVolume: called with args %+v", *req)
-	cteraVolumeId, err := getCteraVolumeIdFromVolumeId(req.GetVolumeId())
+	cteraVolumeID, err := getCteraVolumeIDFromVolumeID(req.GetVolumeId())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -170,12 +172,12 @@ func (d *controllerService) ControllerPublishVolume(ctx context.Context, req *cs
 		return nil, status.Error(codes.InvalidArgument, "Node Id is empty")
 	}
 
-	client, err := d.initClientConnection(ctx, cteraVolumeId.FilerAddress, req.GetSecrets())
+	client, err := d.initClientConnection(ctx, cteraVolumeID.FilerAddress, req.GetSecrets())
 	if err != nil {
 		return nil, err
 	}
 
-	share, err := client.GetShareSafe(cteraVolumeId.ShareName)
+	share, err := client.GetShareSafe(cteraVolumeID.ShareName)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -193,7 +195,7 @@ func (d *controllerService) ControllerPublishVolume(ctx context.Context, req *cs
 		}
 	}
 
-	err = client.AddTrustedNfsClient(cteraVolumeId.ShareName, nodeAddress, netmask, perm)
+	err = client.AddTrustedNfsClient(cteraVolumeID.ShareName, nodeAddress, netmask, perm)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -203,7 +205,7 @@ func (d *controllerService) ControllerPublishVolume(ctx context.Context, req *cs
 
 func (d *controllerService) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	klog.V(4).Infof("ControllerUnpublishVolume: called with args %+v", *req)
-	cteraVolumeId, err := getCteraVolumeIdFromVolumeId(req.GetVolumeId())
+	cteraVolumeID, err := getCteraVolumeIDFromVolumeID(req.GetVolumeId())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -213,12 +215,12 @@ func (d *controllerService) ControllerUnpublishVolume(ctx context.Context, req *
 		return nil, status.Error(codes.InvalidArgument, "Node Id is empty")
 	}
 
-	client, err := d.initClientConnection(ctx, cteraVolumeId.FilerAddress, req.GetSecrets())
+	client, err := d.initClientConnection(ctx, cteraVolumeID.FilerAddress, req.GetSecrets())
 	if err != nil {
 		return nil, err
 	}
 
-	share, err := client.GetShareSafe(cteraVolumeId.ShareName)
+	share, err := client.GetShareSafe(cteraVolumeID.ShareName)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -232,7 +234,7 @@ func (d *controllerService) ControllerUnpublishVolume(ctx context.Context, req *
 
 	for _, trustedNfsClient := range share.GetTrustedNfsClients() {
 		if trustedNfsClient.GetAddress() == nodeAddress && trustedNfsClient.GetNetmask() == netmask && trustedNfsClient.GetPerm() == perm {
-			err = client.RemoveTrustedNfsClient(cteraVolumeId.ShareName, nodeAddress, netmask)
+			err = client.RemoveTrustedNfsClient(cteraVolumeID.ShareName, nodeAddress, netmask)
 			if err != nil {
 				return nil, status.Error(codes.Internal, err.Error())
 			}
@@ -261,7 +263,7 @@ func (d *controllerService) ControllerGetCapabilities(ctx context.Context, req *
 
 func (d *controllerService) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	klog.V(4).Infof("ValidateVolumeCapabilities: called with args %+v", *req)
-	cteraVolumeId, err := getCteraVolumeIdFromVolumeId(req.GetVolumeId())
+	cteraVolumeID, err := getCteraVolumeIDFromVolumeID(req.GetVolumeId())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -271,12 +273,12 @@ func (d *controllerService) ValidateVolumeCapabilities(ctx context.Context, req 
 		return nil, status.Error(codes.InvalidArgument, "Volume capabilities not provided")
 	}
 
-	client, err := d.initClientConnection(ctx, cteraVolumeId.FilerAddress, req.GetSecrets())
+	client, err := d.initClientConnection(ctx, cteraVolumeID.FilerAddress, req.GetSecrets())
 	if err != nil {
 		return nil, err
 	}
 
-	share, err := client.GetShareSafe(cteraVolumeId.ShareName)
+	share, err := client.GetShareSafe(cteraVolumeID.ShareName)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}

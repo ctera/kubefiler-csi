@@ -66,8 +66,8 @@ func (c *CteraClient) Authenticate(ctx context.Context, username, password strin
 		return err
 	}
 
-	authenticated_ctx := context.WithValue(ctx, ctera.ContextAccessToken, jwt)
-	c.ctx = &authenticated_ctx
+	authenticatedCtx := context.WithValue(ctx, ctera.ContextAccessToken, jwt)
+	c.ctx = &authenticatedCtx
 
 	return nil
 }

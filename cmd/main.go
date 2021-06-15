@@ -15,7 +15,7 @@ func main() {
 	drv, err := driver.NewDriver(
 		driver.WithEndpoint(options.ServerOptions.Endpoint),
 		driver.WithMode(options.DriverMode),
-		driver.WithNodeIp(options.NodeOptions.NodeIp),
+		driver.WithNodeIP(options.NodeOptions.NodeIP),
 	)
 	if err != nil {
 		klog.Fatalln(err)

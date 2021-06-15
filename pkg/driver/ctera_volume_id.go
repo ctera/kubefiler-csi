@@ -5,13 +5,13 @@ import (
 	"errors"
 )
 
-type CteraVolumeId struct {
+type CteraVolumeID struct {
 	FilerAddress string `json:"filer_address"`
 	ShareName    string `json:"share_name"`
 	Path         string `json:"path"`
 }
 
-func (c *CteraVolumeId) ToVolumeId() (*string, error) {
+func (c *CteraVolumeID) ToVolumeID() (*string, error) {
 	bytes, err := json.Marshal(c)
 	if err != nil {
 		return nil, err
@@ -21,15 +21,15 @@ func (c *CteraVolumeId) ToVolumeId() (*string, error) {
 	return &ret, nil
 }
 
-func getCteraVolumeIdFromVolumeId(volumeId string) (*CteraVolumeId, error) {
-	if len(volumeId) == 0 {
+func getCteraVolumeIDFromVolumeID(volumeID string) (*CteraVolumeID, error) {
+	if len(volumeID) == 0 {
 		return nil, errors.New("volume ID missing in request")
 	}
 
-	var cteraVolumeId CteraVolumeId
-	err := json.Unmarshal([]byte(volumeId), &cteraVolumeId)
+	var cteraVolumeID CteraVolumeID
+	err := json.Unmarshal([]byte(volumeID), &cteraVolumeID)
 	if err != nil {
 		return nil, err
 	}
-	return &cteraVolumeId, nil
+	return &cteraVolumeID, nil
 }

@@ -50,6 +50,6 @@ func main() {
 
 	fmt.Println("Available search fields supported by ctera:")
 	for _, field := range searchFieldResults {
-		fmt.Println(fmt.Sprintf("%s", field.Username))
+		fmt.Println(field.Username)
 	}
 }

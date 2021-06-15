@@ -5,7 +5,7 @@ import (
 )
 
 type testRequest struct {
-	volumeId string
+	volumeID string
 	expResp  bool
 	delete   bool
 }
@@ -20,7 +20,7 @@ func TestInFlight(t *testing.T) {
 			requests: []testRequest{
 				{
 
-					volumeId: "random-vol-name",
+					volumeID: "random-vol-name",
 					expResp:  true,
 				},
 			},
@@ -29,11 +29,11 @@ func TestInFlight(t *testing.T) {
 			name: "success adding request with different volumeId",
 			requests: []testRequest{
 				{
-					volumeId: "random-vol-foobar",
+					volumeID: "random-vol-foobar",
 					expResp:  true,
 				},
 				{
-					volumeId: "random-vol-name-foobar",
+					volumeID: "random-vol-name-foobar",
 					expResp:  true,
 				},
 			},
@@ -42,11 +42,11 @@ func TestInFlight(t *testing.T) {
 			name: "failed adding request with same volumeId",
 			requests: []testRequest{
 				{
-					volumeId: "random-vol-name-foobar",
+					volumeID: "random-vol-name-foobar",
 					expResp:  true,
 				},
 				{
-					volumeId: "random-vol-name-foobar",
+					volumeID: "random-vol-name-foobar",
 					expResp:  false,
 				},
 			},
@@ -56,16 +56,16 @@ func TestInFlight(t *testing.T) {
 			name: "success add, delete, add copy",
 			requests: []testRequest{
 				{
-					volumeId: "random-vol-name",
+					volumeID: "random-vol-name",
 					expResp:  true,
 				},
 				{
-					volumeId: "random-vol-name",
+					volumeID: "random-vol-name",
 					expResp:  false,
 					delete:   true,
 				},
 				{
-					volumeId: "random-vol-name",
+					volumeID: "random-vol-name",
 					expResp:  true,
 				},
 			},
@@ -78,9 +78,9 @@ func TestInFlight(t *testing.T) {
 			for _, r := range tc.requests {
 				var resp bool
 				if r.delete {
-					db.Delete(r.volumeId)
+					db.Delete(r.volumeID)
 				} else {
-					resp = db.Insert(r.volumeId)
+					resp = db.Insert(r.volumeID)
 				}
 				if r.expResp != resp {
 					t.Fatalf("expected insert to be %+v, got %+v", r.expResp, resp)
