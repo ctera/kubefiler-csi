@@ -54,7 +54,7 @@ func (d *controllerService) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	var (
 		filerAddress string
-		path string
+		path         string
 	)
 
 	for key, value := range req.GetParameters() {
@@ -112,15 +112,15 @@ func (d *controllerService) CreateVolume(ctx context.Context, req *csi.CreateVol
 	return createVolumeResponse, nil
 }
 
-func (d *controllerService) canReuseShare(share *ctera.Share, path string) (bool) {
+func (d *controllerService) canReuseShare(share *ctera.Share, path string) bool {
 	return share.GetDirectory() == path
 }
 
 func newCreateVolumeResponse(server string, share *ctera.Share) (*csi.CreateVolumeResponse, error) {
-	cteraVolumeId := CteraVolumeId {
+	cteraVolumeId := CteraVolumeId{
 		FilerAddress: server,
-		ShareName: share.GetName(),
-		Path: share.GetDirectory(),
+		ShareName:    share.GetName(),
+		Path:         share.GetDirectory(),
 	}
 
 	volumeId, err := cteraVolumeId.ToVolumeId()
@@ -129,13 +129,13 @@ func newCreateVolumeResponse(server string, share *ctera.Share) (*csi.CreateVolu
 	}
 
 	return &csi.CreateVolumeResponse{
-		Volume: &csi.Volume{
-			VolumeId: *volumeId,
-			CapacityBytes: 0,
-			VolumeContext: map[string]string{},
+			Volume: &csi.Volume{
+				VolumeId:      *volumeId,
+				CapacityBytes: 0,
+				VolumeContext: map[string]string{},
+			},
 		},
-	},
-	nil
+		nil
 }
 
 func (d *controllerService) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {

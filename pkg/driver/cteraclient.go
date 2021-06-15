@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"k8s.io/klog"
 	ctera "github.com/ctera/ctera-gateway-csi/pkg/ctera-openapi"
+	"k8s.io/klog"
 )
 
 type CteraClientError struct {
@@ -19,7 +19,7 @@ func (e CteraClientError) Error() string {
 
 type CteraClient struct {
 	client *ctera.APIClient
-	ctx *context.Context
+	ctx    *context.Context
 }
 
 func GetAuthenticatedCteraClient(ctx context.Context, filerAddress, username, password string) (*CteraClient, error) {
@@ -41,18 +41,18 @@ func NewCteraClient(filerAddress string) (*CteraClient, error) {
 	configuration.Host = fmt.Sprintf("%s:9090", filerAddress)
 	configuration.Servers = ctera.ServerConfigurations{
 		{
-			URL: fmt.Sprintf("http://%s:9090/v1.0", filerAddress),
+			URL:         fmt.Sprintf("http://%s:9090/v1.0", filerAddress),
 			Description: "Main address",
 		},
 	}
 
 	return &CteraClient{
 		client: ctera.NewAPIClient(configuration),
-		ctx: nil,
+		ctx:    nil,
 	}, nil
 }
 
-func (c *CteraClient) Authenticate(ctx context.Context, username, password string) (error) {
+func (c *CteraClient) Authenticate(ctx context.Context, username, password string) error {
 	if c.ctx != nil {
 		return CteraClientError{
 			error: "Already authenticated",
@@ -72,7 +72,7 @@ func (c *CteraClient) Authenticate(ctx context.Context, username, password strin
 	return nil
 }
 
-func (c *CteraClient) GetShareSafe(name string)(*ctera.Share, error) {
+func (c *CteraClient) GetShareSafe(name string) (*ctera.Share, error) {
 	share, _, err := c.client.SharesApi.SharesNameGet(*c.ctx, name).Execute()
 	if err != nil {
 		if c.getStatusFromError(err) != 404 {
@@ -83,7 +83,7 @@ func (c *CteraClient) GetShareSafe(name string)(*ctera.Share, error) {
 	return &share, nil
 }
 
-func (c *CteraClient) CreateShare(name, path string)(*ctera.Share, error) {
+func (c *CteraClient) CreateShare(name, path string) (*ctera.Share, error) {
 	share := ctera.NewShare(name)
 	share.Directory = &path
 	// TODO Do we need to override any default parameters
@@ -96,7 +96,7 @@ func (c *CteraClient) CreateShare(name, path string)(*ctera.Share, error) {
 	return c.GetShareSafe(name)
 }
 
-func (c *CteraClient) DeleteShareSafe(name string)(error) {
+func (c *CteraClient) DeleteShareSafe(name string) error {
 	_, err := c.client.SharesApi.SharesNameDelete(*c.ctx, name).Execute()
 	if err != nil {
 		if c.getStatusFromError(err) != 404 {
@@ -106,18 +106,18 @@ func (c *CteraClient) DeleteShareSafe(name string)(error) {
 	return nil
 }
 
-func (c *CteraClient) AddTrustedNfsClient(shareName, address, netmask string, perm ctera.FileAccessMode) (error) {
+func (c *CteraClient) AddTrustedNfsClient(shareName, address, netmask string, perm ctera.FileAccessMode) error {
 	trustedNfsClients := []ctera.NFSv3AccessControlEntry{*ctera.NewNFSv3AccessControlEntry(address, netmask, perm)}
 	_, err := c.client.SharesApi.CteraGatewayOpenapiApiSharesAddTrustedNfsClients(*c.ctx, shareName).NFSv3AccessControlEntry(trustedNfsClients).Execute()
 	return err
 }
 
-func (c *CteraClient) RemoveTrustedNfsClient(shareName, address, netmask string) (error) {
+func (c *CteraClient) RemoveTrustedNfsClient(shareName, address, netmask string) error {
 	_, err := c.client.SharesApi.CteraGatewayOpenapiApiSharesRemoveTrustedNfsClient(*c.ctx, shareName).Address(address).Netmask(netmask).Execute()
 	return err
 }
 
-func (c *CteraClient) getStatusFromError(err error) (int32) {
+func (c *CteraClient) getStatusFromError(err error) int32 {
 	genericOpenAPIError, ok := err.(ctera.GenericOpenAPIError)
 	if !ok {
 		return -1

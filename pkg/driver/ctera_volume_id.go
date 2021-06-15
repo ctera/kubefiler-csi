@@ -7,8 +7,8 @@ import (
 
 type CteraVolumeId struct {
 	FilerAddress string `json:"filer_address"`
-	ShareName  	 string `json:"share_name"`
-	Path 		 string `json:"path"`
+	ShareName    string `json:"share_name"`
+	Path         string `json:"path"`
 }
 
 func (c *CteraVolumeId) ToVolumeId() (*string, error) {
@@ -21,7 +21,7 @@ func (c *CteraVolumeId) ToVolumeId() (*string, error) {
 	return &ret, nil
 }
 
-func getCteraVolumeIdFromVolumeId(volumeId string) (*CteraVolumeId, error){
+func getCteraVolumeIdFromVolumeId(volumeId string) (*CteraVolumeId, error) {
 	if len(volumeId) == 0 {
 		return nil, errors.New("volume ID missing in request")
 	}

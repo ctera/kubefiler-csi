@@ -38,9 +38,9 @@ type Driver struct {
 }
 
 type DriverOptions struct {
-	endpoint            string
-	mode                Mode
-	nodeIp 				string
+	endpoint string
+	mode     Mode
+	nodeIp   string
 }
 
 func NewDriver(options ...func(*DriverOptions)) (*Driver, error) {

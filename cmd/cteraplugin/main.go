@@ -22,7 +22,7 @@ func main() {
 	configuration.Host = fmt.Sprintf("%s:9090", address)
 	configuration.Servers = ctera.ServerConfigurations{
 		{
-			URL: fmt.Sprintf("http://%s:9090/v1.0", address),
+			URL:         fmt.Sprintf("http://%s:9090/v1.0", address),
 			Description: "Main address",
 		},
 	}
