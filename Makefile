@@ -33,18 +33,6 @@ coverage: unit-test
 gofmt:
 	hack/update-gofmt.sh
 
-flake8:
-	flake8 ctera_gateway_openapi tests/ut
-
-pylint:
-	mkdir -p reports/
-	PYLINTHOME=reports/ pylint -r n ctera_gateway_openapi tests/ut
-
-test:
-	# Run the unittests and create a junit-xml report
-	mkdir -p reports/
-	nose2 --config=tests/ut/nose2.cfg --verbose --project-directory . $(TEST)
-
 build: ${OUTPUT_DIR}/ctera-csi-driver
 	skipper build gateway-csi
 	docker tag gateway-csi:${GIT_COMMIT} gateway-csi:last_build
@@ -68,5 +56,3 @@ client:
 clean:
 	# Clean any generated files
 	rm -rf ${OUTPUT_DIR} ${REPORTS_DIR}
-
-force:
