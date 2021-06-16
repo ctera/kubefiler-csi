@@ -10,7 +10,7 @@ SOURCES := $(shell find . -name "*.go")
 all: out/ctera-csi-driver
 
 .PHONY: verify
-verify: unit-test
+verify:
 	hack/verify-all.sh
 
 .PHONY: unit-test
