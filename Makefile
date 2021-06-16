@@ -14,7 +14,7 @@ COVERAGE_REPORT_FILE=${REPORTS_DIR}/coverage.cov
 COVERAGE_HTML_FILE=${REPORTS_DIR}/coverage.html
 MINIMAL_COVERAGE_RATE=5
 
-all: out/ctera-csi-driver
+all: out/ctera-csi-driver coverage verify
 
 .PHONY: verify
 verify:
