@@ -9,6 +9,18 @@ SOURCES := $(shell find . -name "*.go")
 
 all: out/ctera-csi-driver
 
+.PHONY: verify
+verify: unit-test
+	hack/verify-all.sh
+
+.PHONY: unit-test
+unit-test:
+	go test -covermode=count -coverprofile=profile.cov ./pkg/... -v
+
+.PHONY: gofmt
+gofmt:
+	hack/update-gofmt.sh
+
 flake8:
 	flake8 ctera_gateway_openapi tests/ut
 
