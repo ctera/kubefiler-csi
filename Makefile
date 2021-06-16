@@ -15,7 +15,8 @@ verify:
 
 .PHONY: unit-test
 unit-test:
-	go test -covermode=count -coverprofile=profile.cov ./pkg/... -v
+	mkdir reports
+	go test -coverprofile=reports/profile.cov ./pkg/... -v
 
 .PHONY: gofmt
 gofmt:
@@ -59,6 +60,6 @@ client:
 
 clean:
 	# Clean any generated files
-	rm -rf build dist .coverage .cache reports
+	rm -rf out reports
 
 force:
