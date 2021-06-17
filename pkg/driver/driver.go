@@ -42,7 +42,7 @@ const (
 )
 
 const (
-	driverName = "csi.ctera.com"
+	driverName = "csi.gateway.ctera.com"
 )
 
 type Driver struct {
