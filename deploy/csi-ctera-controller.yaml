@@ -1,0 +1,121 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: csi-ctera-gateway-controller
+  namespace: kube-system
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: csi-ctera-gateway-controller
+  template:
+    metadata:
+      labels:
+        app: csi-ctera-gateway-controller
+    spec:
+      nodeSelector:
+        kubernetes.io/os: linux
+      serviceAccountName: csi-ctera-gateway-controller-sa
+      priorityClassName: system-cluster-critical
+      tolerations:
+        - key: "node-role.kubernetes.io/master"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/controlplane"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+      containers:
+        - name: csi-provisioner
+          image: k8s.gcr.io/sig-storage/csi-provisioner:v2.1.0
+          args:
+            - "-v=2"
+            - "--csi-address=$(CSI_SOCKET_ADDRESS)"
+            - "--leader-election"
+          env:
+            - name: CSI_SOCKET_ADDRESS
+              value: /csi/csi.sock
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+          resources:
+            limits:
+              cpu: 100m
+              memory: 400Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+        - name: csi-attacher
+          image: k8s.gcr.io/sig-storage/csi-attacher:v3.1.0
+          args:
+            - --csi-address=$(CSI_SOCKET_ADDRESS)
+            - --v=5
+            - --leader-election=true
+          env:
+            - name: CSI_SOCKET_ADDRESS
+              value: /csi/csi.sock
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+        - name: liveness-probe
+          image: k8s.gcr.io/sig-storage/livenessprobe:v2.3.0
+          args:
+            - --csi-address=$(CSI_SOCKET_ADDRESS)
+            - --probe-timeout=3s
+            - --health-port=29652
+            - --v=2
+          env:
+            - name: CSI_SOCKET_ADDRESS
+              value: /csi/csi.sock
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /csi
+          resources:
+            limits:
+              cpu: 100m
+              memory: 100Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+        - name: gateway-csi
+          image: gateway-csi:last_build
+          imagePullPolicy: IfNotPresent
+          args:
+            - controller
+            - "-v=5"
+            - "--node-ip=$(NODE_IP)"
+            - "--endpoint=$(CSI_ENDPOINT)"
+          env:
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+          ports:
+            - containerPort: 29652
+              name: healthz
+              protocol: TCP
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /healthz
+              port: healthz
+            initialDelaySeconds: 30
+            timeoutSeconds: 10
+            periodSeconds: 30
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 10m
+              memory: 20Mi
+      volumes:
+        - name: socket-dir
+          emptyDir: {}
