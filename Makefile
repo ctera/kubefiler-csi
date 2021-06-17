@@ -26,6 +26,7 @@ unit-test:
 	go test -coverprofile=${COVERAGE_REPORT_FILE} ./pkg/... -v
 
 coverage: unit-test
+	go tool cover -func=${COVERAGE_REPORT_FILE}
 	go tool cover -html=${COVERAGE_REPORT_FILE} -o ${COVERAGE_HTML_FILE}
 	hack/verify-coverage.sh ${COVERAGE_REPORT_FILE} ${MINIMAL_COVERAGE_RATE}
 
