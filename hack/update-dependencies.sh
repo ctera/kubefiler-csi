@@ -1,5 +1,8 @@
 #!/bin/bash
-# Copyright 2019 The Kubernetes Authors.
+
+# Copyright 2021, CTERA Networks.
+#
+# Portions Copyright 2019 The Kubernetes Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -84,10 +87,10 @@ function group_replace_directives() {
      /^replace [(]/      { inreplace=1; next                   }
      inreplace && /^[)]/ { inreplace=0; next                   }
      inreplace           { print > \"${go_mod_replace}\"; next }
-     
+
      # print ungrouped replace directives with the replace directive trimmed
      /^replace [^(]/ { sub(/^replace /,\"\"); print > \"${go_mod_replace}\"; next }
-     
+
      # otherwise print to the noreplace file
      { print > \"${go_mod_noreplace}\" }
   "

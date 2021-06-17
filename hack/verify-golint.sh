@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Copyright 2021, CTERA Networks.
+#
 # Copyright 2018 The Kubernetes Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
