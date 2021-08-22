@@ -2,21 +2,21 @@
 kind: Deployment
 apiVersion: apps/v1
 metadata:
-  name: csi-ctera-gateway-controller
+  name: csi-kubefiler-controller
   namespace: kube-system
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: csi-ctera-gateway-controller
+      app: csi-kubefiler-controller
   template:
     metadata:
       labels:
-        app: csi-ctera-gateway-controller
+        app: csi-kubefiler-controller
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-      serviceAccountName: csi-ctera-gateway-controller-sa
+      serviceAccountName: csi-kubefiler-controller-sa
       priorityClassName: system-cluster-critical
       tolerations:
         - key: "node-role.kubernetes.io/master"
@@ -79,8 +79,8 @@ spec:
             requests:
               cpu: 10m
               memory: 20Mi
-        - name: gateway-csi
-          image: gateway-csi:last_build
+        - name: kubefiler-csi
+          image: kubefiler-csi:last_build
           imagePullPolicy: IfNotPresent
           args:
             - controller

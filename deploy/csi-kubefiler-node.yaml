@@ -1,19 +1,19 @@
 ---
 # This YAML file contains driver-registrar & csi driver nodeplugin API objects
-# that are necessary to run CSI nodeplugin for ctera-gateway
+# that are necessary to run CSI nodeplugin for KubeFiler
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
-  name: csi-ctera-gateway-node
+  name: csi-kubefiler-node
   namespace: kube-system
 spec:
   selector:
     matchLabels:
-      app: csi-ctera-gateway-node
+      app: csi-kubefiler-node
   template:
     metadata:
       labels:
-        app: csi-ctera-gateway-node
+        app: csi-kubefiler-node
     spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
@@ -62,13 +62,13 @@ spec:
               mountPath: /csi
             - name: registration-dir
               mountPath: /registration
-        - name: ctera-csi
+        - name: kubefiler-csi
           securityContext:
             privileged: true
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: gateway-csi:last_build
+          image: kubefiler-csi:last_build
           args:
             - node
             - "-v=5"

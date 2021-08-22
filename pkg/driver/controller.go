@@ -24,8 +24,8 @@ import (
 	"strings"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi"
-	ctera "github.com/ctera/ctera-gateway-csi/pkg/ctera-openapi"
-	"github.com/ctera/ctera-gateway-csi/pkg/driver/internal"
+	ctera "github.com/ctera/kubefiler-csi/pkg/ctera-openapi"
+	"github.com/ctera/kubefiler-csi/pkg/driver/internal"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"

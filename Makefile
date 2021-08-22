@@ -1,5 +1,5 @@
 # *** WARNING: Targets are meant to run in a build container - Use skipper make ***
-PKG=github.com/ctera/ctera-gateway-csi
+PKG=github.com/ctera/kubefiler-csi
 VERSION=v1.0.0
 GIT_COMMIT?=$(shell git rev-parse HEAD)
 BUILD_DATE?=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -35,8 +35,8 @@ gofmt:
 	hack/update-gofmt.sh
 
 build: ${OUTPUT_DIR}/ctera-csi-driver
-	skipper build gateway-csi
-	docker tag gateway-csi:${GIT_COMMIT} gateway-csi:last_build
+	skipper build kubefiler-csi
+	docker tag kubefiler-csi:${GIT_COMMIT} kubefiler-csi:last_build
 
 ${OUTPUT_DIR}/ctera-csi-driver: ${SOURCES}
 	CGO_ENABLED=0 GOOS=linux go build -ldflags ${LDFLAGS} -o $@ ./cmd/

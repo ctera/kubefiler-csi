@@ -21,7 +21,7 @@ package options
 import (
 	"flag"
 
-	"github.com/ctera/ctera-gateway-csi/pkg/driver"
+	"github.com/ctera/kubefiler-csi/pkg/driver"
 )
 
 // ServerOptions contains options and configuration settings for the driver server.

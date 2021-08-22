@@ -24,7 +24,7 @@ import (
 	"net"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/ctera/ctera-gateway-csi/pkg/util"
+	"github.com/ctera/kubefiler-csi/pkg/util"
 	"google.golang.org/grpc"
 	"k8s.io/klog"
 )
@@ -42,7 +42,7 @@ const (
 )
 
 const (
-	driverName = "csi.gateway.ctera.com"
+	driverName = "csi.kubefiler.ctera.com"
 )
 
 type Driver struct {

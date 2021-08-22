@@ -21,7 +21,7 @@ package main
 import (
 	"flag"
 
-	"github.com/ctera/ctera-gateway-csi/pkg/driver"
+	"github.com/ctera/kubefiler-csi/pkg/driver"
 
 	"k8s.io/klog"
 )

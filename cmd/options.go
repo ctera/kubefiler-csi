@@ -24,8 +24,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ctera/ctera-gateway-csi/cmd/options"
-	"github.com/ctera/ctera-gateway-csi/pkg/driver"
+	"github.com/ctera/kubefiler-csi/cmd/options"
+	"github.com/ctera/kubefiler-csi/pkg/driver"
 
 	"k8s.io/klog"
 )

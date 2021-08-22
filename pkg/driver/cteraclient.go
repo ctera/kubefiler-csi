@@ -22,7 +22,7 @@ import (
 	"context"
 	"fmt"
 
-	ctera "github.com/ctera/ctera-gateway-csi/pkg/ctera-openapi"
+	ctera "github.com/ctera/kubefiler-csi/pkg/ctera-openapi"
 	"k8s.io/klog"
 )
 

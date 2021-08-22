@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/ctera/ctera-gateway-csi/pkg/driver/internal"
+	"github.com/ctera/kubefiler-csi/pkg/driver/internal"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
