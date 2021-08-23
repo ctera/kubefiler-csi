@@ -36,8 +36,8 @@ if [ $ver != "master" ]; then
 fi
 
 echo "Installing CTERA Gateway CSI driver, version: $ver ..."
-kubectl apply -f $repo/rbac-csi-ctera-controller.yaml
-kubectl apply -f $repo/csi-ctera-driverinfo.yaml
-kubectl apply -f $repo/csi-ctera-controller.yaml
-kubectl apply -f $repo/csi-ctera-node.yaml
+kubectl apply -f $repo/rbac-csi-kubefiler-controller.yaml
+kubectl apply -f $repo/csi-kubefiler-driverinfo.yaml
+kubectl apply -f $repo/csi-kubefiler-controller.yaml
+kubectl apply -f $repo/csi-kubefiler-node.yaml
 echo 'CTERA Gateway CSI driver installed successfully.'

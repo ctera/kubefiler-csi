@@ -15,6 +15,7 @@ spec:
       labels:
         app: csi-kubefiler-node
     spec:
+      serviceAccountName: csi-kubefiler-controller-sa
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       nodeSelector:
@@ -68,7 +69,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: kubefiler-csi:last_build
+          image: 192.168.9.174:5000/ctera/kubefiler-csi:last_build
           args:
             - node
             - "-v=5"
@@ -93,7 +94,7 @@ spec:
             initialDelaySeconds: 30
             timeoutSeconds: 10
             periodSeconds: 30
-          imagePullPolicy: "IfNotPresent"
+          imagePullPolicy: Always
           volumeMounts:
             - name: socket-dir
               mountPath: /csi

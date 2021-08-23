@@ -34,6 +34,7 @@ spec:
             - "-v=2"
             - "--csi-address=$(CSI_SOCKET_ADDRESS)"
             - "--leader-election"
+            - "--extra-create-metadata"
           env:
             - name: CSI_SOCKET_ADDRESS
               value: /csi/csi.sock
@@ -80,18 +81,13 @@ spec:
               cpu: 10m
               memory: 20Mi
         - name: kubefiler-csi
-          image: kubefiler-csi:last_build
-          imagePullPolicy: IfNotPresent
+          image: 192.168.9.174:5000/ctera/kubefiler-csi:last_build
+          imagePullPolicy: Always
           args:
             - controller
             - "-v=5"
-            - "--node-ip=$(NODE_IP)"
             - "--endpoint=$(CSI_ENDPOINT)"
           env:
-            - name: NODE_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.hostIP
             - name: CSI_ENDPOINT
               value: unix:///csi/csi.sock
           ports:

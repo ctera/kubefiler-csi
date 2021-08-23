@@ -36,8 +36,8 @@ if [ $ver != "master" ]; then
 fi
 
 echo "Uninstalling CTERA Gateway CSI driver, version: $ver ..."
-kubectl delete -f $repo/csi-ctera-controller.yaml --ignore-not-found
-kubectl delete -f $repo/csi-ctera-node.yaml --ignore-not-found
-kubectl delete -f $repo/csi-ctera-driverinfo.yaml --ignore-not-found
-kubectl delete -f $repo/rbac-csi-ctera-controller.yaml --ignore-not-found
+kubectl delete -f $repo/csi-kubefiler-controller.yaml --ignore-not-found
+kubectl delete -f $repo/csi-kubefiler-node.yaml --ignore-not-found
+kubectl delete -f $repo/csi-kubefiler-driverinfo.yaml --ignore-not-found
+kubectl delete -f $repo/rbac-csi-kubefiler-controller.yaml --ignore-not-found
 echo 'Uninstalled CTERA Gateway CSI driver successfully.'

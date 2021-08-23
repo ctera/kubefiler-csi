@@ -30,6 +30,11 @@ import (
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
 	mount "k8s.io/mount-utils"
+	kubeclient "sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const (
+	sharePathBase = "/nfs/shares"
 )
 
 var (
@@ -39,14 +44,16 @@ var (
 
 // nodeService represents the node service of CSI driver
 type nodeService struct {
+	kubeClient    kubeclient.Client
 	mounter       mount.Interface
 	inFlight      *internal.InFlight
 	driverOptions *Options
 }
 
 // newNodeService creates a new node service
-func newNodeService(driverOptions *Options) nodeService {
+func newNodeService(driverOptions *Options, kubeClient *kubeclient.Client) nodeService {
 	return nodeService{
+		kubeClient:    *kubeClient,
 		mounter:       mount.New(""),
 		inFlight:      internal.NewInFlight(),
 		driverOptions: driverOptions,
@@ -55,15 +62,9 @@ func newNodeService(driverOptions *Options) nodeService {
 
 func (ns *nodeService) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
 	klog.V(4).Infof("NodePublishVolume: called with args %+v", *req)
-	cteraVolumeID, err := getCteraVolumeIDFromVolumeID(req.GetVolumeId())
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	if req.GetVolumeCapability() == nil {
-		return nil, status.Error(codes.InvalidArgument, "Volume capability missing in request")
-	}
 	targetPath := req.GetTargetPath()
 	if len(targetPath) == 0 {
+		klog.Error("Target path not provided")
 		return nil, status.Error(codes.InvalidArgument, "Target path not provided")
 	}
 
@@ -71,69 +72,100 @@ func (ns *nodeService) NodePublishVolume(ctx context.Context, req *csi.NodePubli
 	if err != nil {
 		if os.IsNotExist(err) {
 			if err := os.MkdirAll(targetPath, 0750); err != nil {
+				klog.Error(err, "Failed to create the directory")
 				return nil, status.Error(codes.Internal, err.Error())
 			}
 			notMnt = true
 		} else {
+			klog.Error(err, "Failed to evaluate path")
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	}
 	if !notMnt {
+		klog.Error("Path exists but is already a mount point")
 		return &csi.NodePublishVolumeResponse{}, nil
 	}
 
+	kubeFilerVolumeID, err := getKubeFilerVolumeIDFromVolumeID(req.GetVolumeId())
+	if err != nil {
+		klog.Error(err, "Failed to get KubeFilerVolumeID")
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	if req.GetVolumeCapability() == nil {
+		klog.Error(err, "Failed to get VolumeCapability")
+		return nil, status.Error(codes.InvalidArgument, "Volume capability missing in request")
+	}
+
+	filerAddress, err := ns.getFilerAddress(ctx, kubeFilerVolumeID)
+	if err != nil {
+		klog.Error(err, "Failed to get Filer Address")
+		return nil, err
+	}
+	sharePath := sharePathBase + "/" + kubeFilerVolumeID.KubeFilerExportName
+	source := fmt.Sprintf("%s:%s", filerAddress, sharePath)
+
 	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
+	mountOptions = append(mountOptions, "nolock")
 	if req.GetReadonly() {
 		mountOptions = append(mountOptions, "ro")
 	}
 
-	s := cteraVolumeID.FilerAddress
-	ep := cteraVolumeID.ShareName
-	source := fmt.Sprintf("%s:%s", s, ep)
-
-	klog.V(2).Infof("NodePublishVolume: volumeID(%v) source(%s) targetPath(%s) mountflags(%v)", cteraVolumeID.ShareName, source, targetPath, mountOptions)
+	klog.V(2).Infof("NodePublishVolume: volumeID(%v) source(%s) targetPath(%s) mountflags(%v)", kubeFilerVolumeID, source, targetPath, mountOptions)
 	err = ns.mounter.Mount(source, targetPath, "nfs", mountOptions)
 	if err != nil {
 		if os.IsPermission(err) {
+			klog.Error("Failed to mount due to permissions")
 			return nil, status.Error(codes.PermissionDenied, err.Error())
 		}
 		if strings.Contains(err.Error(), "invalid argument") {
+			klog.Error("Failed to mount due to an invalid argument")
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
+		klog.Error(err, "Failed to mount due to other reason")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	klog.V(4).Info("NodePublishVolume: Done successfully")
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
 func (ns *nodeService) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	klog.V(4).Infof("NodeUnpublishVolume: called with args %+v", *req)
-	cteraVolumeID, err := getCteraVolumeIDFromVolumeID(req.GetVolumeId())
+	kubeFilerVolumeID, err := getKubeFilerVolumeIDFromVolumeID(req.GetVolumeId())
 	if err != nil {
+		klog.Error(err, "Failed to get KubeFilerVolumeID")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
 	targetPath := req.GetTargetPath()
 	if len(targetPath) == 0 {
+		klog.Error("Target path not provided")
 		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
 	}
 
 	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
+			klog.Error("Target path not found")
 			return nil, status.Error(codes.NotFound, "Targetpath not found")
 		}
+		klog.Error(err, "Failed to evalute path")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if notMnt {
-		return nil, status.Error(codes.NotFound, "Volume not mounted")
+		klog.Error("Target path is not mounted")
+		return &csi.NodeUnpublishVolumeResponse{}, nil
 	}
 
-	klog.V(2).Infof("NodeUnpublishVolume: CleanupMountPoint %s on volumeID(%s)", targetPath, cteraVolumeID.ShareName)
+	klog.V(2).Infof("NodeUnpublishVolume: CleanupMountPoint %s on volumeID(%+v)", targetPath, kubeFilerVolumeID)
 	err = mount.CleanupMountPoint(targetPath, ns.mounter, false)
 	if err != nil {
+		klog.Error(err, "Failed to unmount")
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	klog.V(4).Info("NodeUnpublishVolume done successfully")
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
@@ -158,6 +190,28 @@ func (ns *nodeService) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequ
 	return &csi.NodeGetInfoResponse{
 		NodeId: ns.driverOptions.nodeIP,
 	}, nil
+}
+
+func (ns *nodeService) getFilerAddress(ctx context.Context, kubeFilerVolumeID *KubeFilerVolumeID) (string, error) {
+	kubeFilerExport, err := internal.GetKubeFilerExport(ctx, ns.kubeClient, kubeFilerVolumeID.Namespace, kubeFilerVolumeID.KubeFilerExportName)
+	if err != nil {
+		klog.Error(err, "Failed to get KubeFilerExport")
+		return "", err
+	}
+
+	kubeFiler, err := internal.GetKubeFiler(ctx, ns.kubeClient, kubeFilerVolumeID.Namespace, kubeFilerExport.Spec.KubeFiler)
+	if err != nil {
+		klog.Error(err, "Failed to get KubeFiler")
+		return "", err
+	}
+
+	kubeFilerService, err := internal.GetService(ctx, ns.kubeClient, kubeFilerVolumeID.Namespace, kubeFiler.GetName()+serviceNameSuffix)
+	if err != nil {
+		klog.Error(err, "Failed to get Filer service")
+		return "", err
+	}
+
+	return kubeFilerService.Spec.ClusterIP, nil
 }
 
 func (ns *nodeService) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {

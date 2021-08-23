@@ -25,8 +25,14 @@ import (
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/ctera/kubefiler-csi/pkg/util"
+	kubefilerv1alpha1 "github.com/ctera/kubefiler-operator/api/v1alpha1"
 	"google.golang.org/grpc"
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog"
+	ctrl "sigs.k8s.io/controller-runtime"
+	kubeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Mode is the operating mode of the CSI driver.
@@ -74,18 +80,23 @@ func NewDriver(options ...func(*Options)) (*Driver, error) {
 		return nil, fmt.Errorf("invalid driver options: %v", err)
 	}
 
+	kubeClient, err := initKubeClient()
+	if err != nil {
+		return nil, err
+	}
+
 	driver := Driver{
 		options: &driverOptions,
 	}
 
 	switch driverOptions.mode {
 	case ControllerMode:
-		driver.controllerService = newControllerService(&driverOptions)
+		driver.controllerService = newControllerService(&driverOptions, kubeClient)
 	case NodeMode:
-		driver.nodeService = newNodeService(&driverOptions)
+		driver.nodeService = newNodeService(&driverOptions, kubeClient)
 	case AllMode:
-		driver.controllerService = newControllerService(&driverOptions)
-		driver.nodeService = newNodeService(&driverOptions)
+		driver.controllerService = newControllerService(&driverOptions, kubeClient)
+		driver.nodeService = newNodeService(&driverOptions, kubeClient)
 	default:
 		return nil, fmt.Errorf("unknown mode: %s", driverOptions.mode)
 	}
@@ -170,4 +181,23 @@ func validateMode(mode Mode) error {
 	}
 
 	return nil
+}
+
+func initKubeClient() (*kubeclient.Client, error) {
+	scheme := runtime.NewScheme()
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(kubefilerv1alpha1.AddToScheme(scheme))
+
+	kubeClient, err := kubeclient.New(
+		ctrl.GetConfigOrDie(),
+		kubeclient.Options{
+			Scheme: scheme,
+		},
+	)
+	if err != nil {
+		klog.Error("Failed to initialize the kubeclient")
+		return nil, err
+	}
+
+	return &kubeClient, err
 }

@@ -20,15 +20,26 @@ package driver
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi"
+	corev1 "k8s.io/api/core/v1"
+	kubeclient "sigs.k8s.io/controller-runtime/pkg/client"
+
 	ctera "github.com/ctera/ctera-gateway-openapi-go-client"
 	"github.com/ctera/kubefiler-csi/pkg/driver/internal"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
+)
+
+const (
+	pvcNameKey                   = "csi.storage.k8s.io/pvc/name"
+	pvcNamespaceKey              = "csi.storage.k8s.io/pvc/namespace"
+	kubefilerExportAnnotationKey = "kubefiler.ctera.com/kubefilerexport"
+	secretNameSuffix             = "-kubefiler-credentials"
+	gatewayUsernameKey           = "username"
+	gatewayPasswordKey           = "password"
+	serviceNameSuffix            = "-kubefiler"
 )
 
 var (
@@ -50,14 +61,16 @@ var (
 
 // controllerService represents the controller service of CSI driver
 type controllerService struct {
+	kubeClient    kubeclient.Client
 	inFlight      *internal.InFlight
 	driverOptions *Options
 }
 
 // newControllerService creates a new controller service
 // it panics if failed to create the service
-func newControllerService(driverOptions *Options) controllerService {
+func newControllerService(driverOptions *Options, kubeClient *kubeclient.Client) controllerService {
 	return controllerService{
+		kubeClient:    *kubeClient,
 		inFlight:      internal.NewInFlight(),
 		driverOptions: driverOptions,
 	}
@@ -65,82 +78,51 @@ func newControllerService(driverOptions *Options) controllerService {
 
 func (d *controllerService) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest) (*csi.CreateVolumeResponse, error) {
 	klog.V(4).Infof("CreateVolume: called with args %+v", *req)
-	shareName := req.GetName()
-	if len(shareName) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "Name was not provided")
-	}
+	pvcNamespace := req.GetParameters()[pvcNamespaceKey]
+	pvcName := req.GetParameters()[pvcNameKey]
 
-	var (
-		filerAddress string
-		path         string
-	)
-
-	for key, value := range req.GetParameters() {
-		switch strings.ToLower(key) {
-		case FilerAddressKey:
-			filerAddress = value
-		case PathKey:
-			path = value
-		default:
-			return nil, status.Errorf(codes.InvalidArgument, "Invalid parameter key %s for CreateVolume", key)
-		}
-	}
-
-	if len(path) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "Path was not provided")
-	}
-
-	if len(filerAddress) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "Filer address was not provided")
-	}
-
-	client, err := d.initClientConnection(ctx, filerAddress, req.GetSecrets())
+	pvc, err := d.getPvc(ctx, pvcNamespace, pvcName)
 	if err != nil {
 		return nil, err
 	}
 
-	share, err := client.GetShareSafe(shareName)
+	klog.V(4).Infof("Got the Pvc: %+v", *pvc)
+
+	associatedKubeFilerExport := pvc.GetAnnotations()[kubefilerExportAnnotationKey]
+
+	klog.V(4).Infof("The associated KubeFilerExport's name is %s", associatedKubeFilerExport)
+
+	_, err = internal.GetKubeFilerExport(ctx, d.kubeClient, pvcNamespace, associatedKubeFilerExport)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, err
 	}
 
-	if share != nil {
-		if d.canReuseShare(share, path) {
-			createVolumeResponse, err := newCreateVolumeResponse(filerAddress, share)
-			if err != nil {
-				return nil, status.Error(codes.Internal, err.Error())
-			}
-			return createVolumeResponse, nil
-		}
-		return nil, status.Error(codes.AlreadyExists, "Share already exists with different parameters")
-	}
-
-	share, err = client.CreateShare(shareName, path)
+	createVolumeResponse, err := newCreateVolumeResponse(pvcNamespace, associatedKubeFilerExport)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	createVolumeResponse, err := newCreateVolumeResponse(filerAddress, share)
-	if err != nil {
-		deleteErr := client.DeleteShareSafe(shareName)
-		if deleteErr != nil {
-			klog.Errorf("cleanup Failed: %s", deleteErr.Error())
-		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return createVolumeResponse, nil
 }
 
-func (d *controllerService) canReuseShare(share *ctera.Share, path string) bool {
-	return share.GetDirectory() == path
+func (d *controllerService) getPvc(ctx context.Context, ns, name string) (*corev1.PersistentVolumeClaim, error) {
+	pvc := &corev1.PersistentVolumeClaim{}
+	err := d.kubeClient.Get(
+		ctx,
+		kubeclient.ObjectKey{
+			Namespace: ns,
+			Name:      name,
+		},
+		pvc,
+	)
+
+	return pvc, err
 }
 
-func newCreateVolumeResponse(server string, share *ctera.Share) (*csi.CreateVolumeResponse, error) {
-	cteraVolumeID := CteraVolumeID{
-		FilerAddress: server,
-		ShareName:    share.GetName(),
-		Path:         share.GetDirectory(),
+func newCreateVolumeResponse(namespace, kubeFilerExportName string) (*csi.CreateVolumeResponse, error) {
+	cteraVolumeID := KubeFilerVolumeID{
+		Namespace:           namespace,
+		KubeFilerExportName: kubeFilerExportName,
 	}
 
 	volumeID, err := cteraVolumeID.ToVolumeID()
@@ -160,27 +142,12 @@ func newCreateVolumeResponse(server string, share *ctera.Share) (*csi.CreateVolu
 
 func (d *controllerService) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest) (*csi.DeleteVolumeResponse, error) {
 	klog.V(4).Infof("DeleteVolume: called with args: %+v", *req)
-	cteraVolumeID, err := getCteraVolumeIDFromVolumeID(req.GetVolumeId())
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	client, err := d.initClientConnection(ctx, cteraVolumeID.FilerAddress, req.GetSecrets())
-	if err != nil {
-		return nil, err
-	}
-
-	err = client.DeleteShareSafe(cteraVolumeID.ShareName)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
 	return &csi.DeleteVolumeResponse{}, nil
 }
 
 func (d *controllerService) ControllerPublishVolume(ctx context.Context, req *csi.ControllerPublishVolumeRequest) (*csi.ControllerPublishVolumeResponse, error) {
 	klog.V(4).Infof("ControllerPublishVolume: called with args %+v", *req)
-	cteraVolumeID, err := getCteraVolumeIDFromVolumeID(req.GetVolumeId())
+	kubeFilerVolumeID, err := getKubeFilerVolumeIDFromVolumeID(req.GetVolumeId())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -190,12 +157,17 @@ func (d *controllerService) ControllerPublishVolume(ctx context.Context, req *cs
 		return nil, status.Error(codes.InvalidArgument, "Node Id is empty")
 	}
 
-	client, err := d.initClientConnection(ctx, cteraVolumeID.FilerAddress, req.GetSecrets())
+	filerAddress, filerUsername, filerPassword, err := d.getFilerLoginDetails(ctx, kubeFilerVolumeID.Namespace, kubeFilerVolumeID.KubeFilerExportName)
 	if err != nil {
 		return nil, err
 	}
 
-	share, err := client.GetShareSafe(cteraVolumeID.ShareName)
+	client, err := GetAuthenticatedCteraClient(ctx, filerAddress, filerUsername, filerPassword)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	share, err := client.GetShareSafe(kubeFilerVolumeID.KubeFilerExportName)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -213,7 +185,7 @@ func (d *controllerService) ControllerPublishVolume(ctx context.Context, req *cs
 		}
 	}
 
-	err = client.AddTrustedNfsClient(cteraVolumeID.ShareName, nodeAddress, netmask, perm)
+	err = client.AddTrustedNfsClient(kubeFilerVolumeID.KubeFilerExportName, nodeAddress, netmask, perm)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -223,7 +195,7 @@ func (d *controllerService) ControllerPublishVolume(ctx context.Context, req *cs
 
 func (d *controllerService) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
 	klog.V(4).Infof("ControllerUnpublishVolume: called with args %+v", *req)
-	cteraVolumeID, err := getCteraVolumeIDFromVolumeID(req.GetVolumeId())
+	kubeFilerVolumeID, err := getKubeFilerVolumeIDFromVolumeID(req.GetVolumeId())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -233,30 +205,33 @@ func (d *controllerService) ControllerUnpublishVolume(ctx context.Context, req *
 		return nil, status.Error(codes.InvalidArgument, "Node Id is empty")
 	}
 
-	client, err := d.initClientConnection(ctx, cteraVolumeID.FilerAddress, req.GetSecrets())
+	filerAddress, filerUsername, filerPassword, err := d.getFilerLoginDetails(ctx, kubeFilerVolumeID.Namespace, kubeFilerVolumeID.KubeFilerExportName)
 	if err != nil {
 		return nil, err
 	}
 
-	share, err := client.GetShareSafe(cteraVolumeID.ShareName)
+	client, err := GetAuthenticatedCteraClient(ctx, filerAddress, filerUsername, filerPassword)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if share == nil {
-		return nil, status.Error(codes.NotFound, "Volume not found")
+	share, err := client.GetShareSafe(kubeFilerVolumeID.KubeFilerExportName)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	netmask := "255.255.0.0"
-	perm := ctera.RW
+	if share != nil {
+		netmask := "255.255.0.0"
+		perm := ctera.RW
 
-	for _, trustedNfsClient := range share.GetTrustedNfsClients() {
-		if trustedNfsClient.GetAddress() == nodeAddress && trustedNfsClient.GetNetmask() == netmask && trustedNfsClient.GetPerm() == perm {
-			err = client.RemoveTrustedNfsClient(cteraVolumeID.ShareName, nodeAddress, netmask)
-			if err != nil {
-				return nil, status.Error(codes.Internal, err.Error())
+		for _, trustedNfsClient := range share.GetTrustedNfsClients() {
+			if trustedNfsClient.GetAddress() == nodeAddress && trustedNfsClient.GetNetmask() == netmask && trustedNfsClient.GetPerm() == perm {
+				err = client.RemoveTrustedNfsClient(kubeFilerVolumeID.KubeFilerExportName, nodeAddress, netmask)
+				if err != nil {
+					return nil, status.Error(codes.Internal, err.Error())
+				}
+				break
 			}
-			break
 		}
 	}
 
@@ -281,7 +256,7 @@ func (d *controllerService) ControllerGetCapabilities(ctx context.Context, req *
 
 func (d *controllerService) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
 	klog.V(4).Infof("ValidateVolumeCapabilities: called with args %+v", *req)
-	cteraVolumeID, err := getCteraVolumeIDFromVolumeID(req.GetVolumeId())
+	kubeFilerVolumeID, err := getKubeFilerVolumeIDFromVolumeID(req.GetVolumeId())
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -291,12 +266,17 @@ func (d *controllerService) ValidateVolumeCapabilities(ctx context.Context, req 
 		return nil, status.Error(codes.InvalidArgument, "Volume capabilities not provided")
 	}
 
-	client, err := d.initClientConnection(ctx, cteraVolumeID.FilerAddress, req.GetSecrets())
+	filerAddress, filerUsername, filerPassword, err := d.getFilerLoginDetails(ctx, kubeFilerVolumeID.Namespace, kubeFilerVolumeID.KubeFilerExportName)
 	if err != nil {
 		return nil, err
 	}
 
-	share, err := client.GetShareSafe(cteraVolumeID.ShareName)
+	client, err := GetAuthenticatedCteraClient(ctx, filerAddress, filerUsername, filerPassword)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	share, err := client.GetShareSafe(kubeFilerVolumeID.KubeFilerExportName)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -312,39 +292,6 @@ func (d *controllerService) ValidateVolumeCapabilities(ctx context.Context, req 
 	return &csi.ValidateVolumeCapabilitiesResponse{
 		Confirmed: confirmed,
 	}, nil
-}
-
-func (d *controllerService) initClientConnection(ctx context.Context, filerAddress string, secrets map[string]string) (*CteraClient, error) {
-	var (
-		username string
-		password string
-	)
-
-	for key, value := range secrets {
-		switch strings.ToLower(key) {
-		case FilerUsernameKey:
-			username = value
-		case FilerPasswordKey:
-			password = value
-		default:
-			return nil, status.Errorf(codes.InvalidArgument, "Invalid secret key %s for CreateVolume", key)
-		}
-	}
-
-	if len(username) == 0 {
-		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Secret does not include %s", FilerUsernameKey))
-	}
-
-	if len(password) == 0 {
-		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Secret does not include %s", FilerPasswordKey))
-	}
-
-	client, err := GetAuthenticatedCteraClient(ctx, filerAddress, username, password)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	return client, nil
 }
 
 func isValidVolumeCapabilities(volCaps []*csi.VolumeCapability) bool {
@@ -364,6 +311,37 @@ func isValidVolumeCapabilities(volCaps []*csi.VolumeCapability) bool {
 		}
 	}
 	return foundAll
+}
+
+func (d *controllerService) getFilerLoginDetails(ctx context.Context, namespace, kubeFilerExportName string) (string, string, string, error) {
+	kubeFilerExport, err := internal.GetKubeFilerExport(ctx, d.kubeClient, namespace, kubeFilerExportName)
+	if err != nil {
+		klog.Error(err, "Failed to get KubeFilerExport")
+		return "", "", "", err
+	}
+
+	kubeFiler, err := internal.GetKubeFiler(ctx, d.kubeClient, namespace, kubeFilerExport.Spec.KubeFiler)
+	if err != nil {
+		klog.Error(err, "Failed to get KubeFiler")
+		return "", "", "", err
+	}
+
+	kubeFilerSecret, err := internal.GetSecret(ctx, d.kubeClient, namespace, kubeFiler.GetName()+secretNameSuffix)
+	if err != nil {
+		klog.Error(err, "Failed to get Filer secret")
+		return "", "", "", err
+	}
+
+	kubeFilerService, err := internal.GetService(ctx, d.kubeClient, namespace, kubeFiler.GetName()+serviceNameSuffix)
+	if err != nil {
+		klog.Error(err, "Failed to get Filer service")
+		return "", "", "", err
+	}
+
+	return kubeFilerService.Spec.ClusterIP,
+		string(kubeFilerSecret.Data[gatewayUsernameKey]),
+		string(kubeFilerSecret.Data[gatewayPasswordKey]),
+		nil
 }
 
 func (d *controllerService) GetCapacity(ctx context.Context, req *csi.GetCapacityRequest) (*csi.GetCapacityResponse, error) {
