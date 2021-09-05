@@ -144,20 +144,6 @@ func (ns *nodeService) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnp
 		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
 	}
 
-	notMnt, err := ns.mounter.IsLikelyNotMountPoint(targetPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			klog.Error("Target path not found")
-			return nil, status.Error(codes.NotFound, "Targetpath not found")
-		}
-		klog.Error(err, "Failed to evalute path")
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	if notMnt {
-		klog.Error("Target path is not mounted")
-		return &csi.NodeUnpublishVolumeResponse{}, nil
-	}
-
 	klog.V(2).Infof("NodeUnpublishVolume: CleanupMountPoint %s on volumeID(%+v)", targetPath, kubeFilerVolumeID)
 	err = mount.CleanupMountPoint(targetPath, ns.mounter, false)
 	if err != nil {
