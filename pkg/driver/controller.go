@@ -23,6 +23,7 @@ import (
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	kubeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	ctera "github.com/ctera/ctera-gateway-openapi-go-client"
@@ -207,6 +208,10 @@ func (d *controllerService) ControllerUnpublishVolume(ctx context.Context, req *
 
 	filerAddress, filerUsername, filerPassword, err := d.getFilerLoginDetails(ctx, kubeFilerVolumeID.Namespace, kubeFilerVolumeID.KubeFilerExportName)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			klog.Warning("Filer details were not found - probably already deleted")
+			return &csi.ControllerUnpublishVolumeResponse{}, nil
+		}
 		return nil, err
 	}
 
