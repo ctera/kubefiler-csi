@@ -35,6 +35,7 @@ import (
 
 const (
 	sharePathBase = "/nfs/shares"
+	sharePort     = 22049
 )
 
 var (
@@ -105,8 +106,10 @@ func (ns *nodeService) NodePublishVolume(ctx context.Context, req *csi.NodePubli
 	sharePath := sharePathBase + "/" + kubeFilerVolumeID.KubeFilerExportName
 	source := fmt.Sprintf("%s:%s", filerAddress, sharePath)
 
+	optionPort := fmt.Sprintf("port=%d", sharePort)
+
 	mountOptions := req.GetVolumeCapability().GetMount().GetMountFlags()
-	mountOptions = append(mountOptions, "nolock")
+	mountOptions = append(mountOptions, "nolock", "proto=tcp", optionPort)
 	if req.GetReadonly() {
 		mountOptions = append(mountOptions, "ro")
 	}
