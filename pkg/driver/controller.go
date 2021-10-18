@@ -177,7 +177,7 @@ func (d *controllerService) ControllerPublishVolume(ctx context.Context, req *cs
 		return nil, status.Error(codes.NotFound, "Volume not found")
 	}
 
-	netmask := "255.255.0.0"
+	netmask := "255.255.255.255"
 	perm := ctera.RW
 
 	for _, trustedNfsClient := range share.GetTrustedNfsClients() {
