@@ -41,6 +41,8 @@ const (
 	gatewayUsernameKey           = "username"
 	gatewayPasswordKey           = "password"
 	serviceNameSuffix            = "-kubefiler"
+	netmask                      = "255.255.255.255"
+	permissions                  = ctera.RW
 )
 
 var (
@@ -177,16 +179,13 @@ func (d *controllerService) ControllerPublishVolume(ctx context.Context, req *cs
 		return nil, status.Error(codes.NotFound, "Volume not found")
 	}
 
-	netmask := "255.255.0.0"
-	perm := ctera.RW
-
 	for _, trustedNfsClient := range share.GetTrustedNfsClients() {
-		if trustedNfsClient.GetAddress() == nodeAddress && trustedNfsClient.GetNetmask() == netmask && trustedNfsClient.GetPerm() == perm {
+		if trustedNfsClient.GetAddress() == nodeAddress && trustedNfsClient.GetNetmask() == netmask && trustedNfsClient.GetPerm() == permissions {
 			return &csi.ControllerPublishVolumeResponse{}, nil
 		}
 	}
 
-	err = client.AddTrustedNfsClient(kubeFilerVolumeID.KubeFilerExportName, nodeAddress, netmask, perm)
+	err = client.AddTrustedNfsClient(kubeFilerVolumeID.KubeFilerExportName, nodeAddress, netmask, permissions)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -226,11 +225,8 @@ func (d *controllerService) ControllerUnpublishVolume(ctx context.Context, req *
 	}
 
 	if share != nil {
-		netmask := "255.255.0.0"
-		perm := ctera.RW
-
 		for _, trustedNfsClient := range share.GetTrustedNfsClients() {
-			if trustedNfsClient.GetAddress() == nodeAddress && trustedNfsClient.GetNetmask() == netmask && trustedNfsClient.GetPerm() == perm {
+			if trustedNfsClient.GetAddress() == nodeAddress && trustedNfsClient.GetNetmask() == netmask && trustedNfsClient.GetPerm() == permissions {
 				err = client.RemoveTrustedNfsClient(kubeFilerVolumeID.KubeFilerExportName, nodeAddress, netmask)
 				if err != nil {
 					return nil, status.Error(codes.Internal, err.Error())
