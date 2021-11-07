@@ -60,9 +60,11 @@ type Driver struct {
 }
 
 type Options struct {
-	endpoint string
-	mode     Mode
-	nodeIP   string
+	endpoint                     string
+	mode                         Mode
+	nodeIP                       string
+	KubeFilerOperatorNameSpace   string
+	KubeFilerLockerConfigMapName string
 }
 
 func NewDriver(options ...func(*Options)) (*Driver, error) {
@@ -164,6 +166,18 @@ func WithMode(mode Mode) func(*Options) {
 func WithNodeIP(nodeIP string) func(*Options) {
 	return func(o *Options) {
 		o.nodeIP = nodeIP
+	}
+}
+
+func WithKubeFilerOperatorNameSpace(kubeFilerOperatorNameSpace string) func(*Options) {
+	return func(o *Options) {
+		o.KubeFilerOperatorNameSpace = kubeFilerOperatorNameSpace
+	}
+}
+
+func WithKubeFilerLockerConfigMapName(kubeFilerLockerConfigMapName string) func(*Options) {
+	return func(o *Options) {
+		o.KubeFilerLockerConfigMapName = kubeFilerLockerConfigMapName
 	}
 }
 

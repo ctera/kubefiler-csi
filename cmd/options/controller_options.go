@@ -24,7 +24,11 @@ import (
 
 // ControllerOptions contains options and configuration settings for the controller service.
 type ControllerOptions struct {
+	KubeFilerOperatorNameSpace   string
+	KubeFilerLockerConfigMapName string
 }
 
 func (s *ControllerOptions) AddFlags(fs *flag.FlagSet) {
+	fs.StringVar(&s.KubeFilerOperatorNameSpace, "operator-namespace", "kubefiler-operator-system", "The namespace of the KubeFiler Operator")
+	fs.StringVar(&s.KubeFilerLockerConfigMapName, "locker-configmap", "kubefiler-operator-locker", "The name of the configMap used for the operator locker")
 }
