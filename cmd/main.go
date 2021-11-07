@@ -34,6 +34,8 @@ func main() {
 		driver.WithEndpoint(options.ServerOptions.Endpoint),
 		driver.WithMode(options.DriverMode),
 		driver.WithNodeIP(options.NodeOptions.NodeIP),
+		driver.WithKubeFilerOperatorNameSpace(options.ControllerOptions.KubeFilerOperatorNameSpace),
+		driver.WithKubeFilerLockerConfigMapName(options.ControllerOptions.KubeFilerLockerConfigMapName),
 	)
 	if err != nil {
 		klog.Fatalln(err)

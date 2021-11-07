@@ -20,11 +20,20 @@ package driver
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	csi "github.com/container-storage-interface/spec/lib/go/csi"
+	kubefilerv1alpha1 "github.com/ctera/kubefiler-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
+	ctrl "sigs.k8s.io/controller-runtime"
 	kubeclient "sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/werf/lockgate"
+	"github.com/werf/lockgate/pkg/distributed_locker"
 
 	ctera "github.com/ctera/ctera-gateway-openapi-go-client"
 	"github.com/ctera/kubefiler-csi/pkg/driver/internal"
@@ -43,6 +52,7 @@ const (
 	serviceNameSuffix            = "-kubefiler"
 	netmask                      = "255.255.255.255"
 	permissions                  = ctera.RW
+	lockTimeoutSeconds           = 30
 )
 
 var (
@@ -67,6 +77,7 @@ type controllerService struct {
 	kubeClient    kubeclient.Client
 	inFlight      *internal.InFlight
 	driverOptions *Options
+	locker        *distributed_locker.DistributedLocker
 }
 
 // newControllerService creates a new controller service
@@ -76,6 +87,16 @@ func newControllerService(driverOptions *Options, kubeClient *kubeclient.Client)
 		kubeClient:    *kubeClient,
 		inFlight:      internal.NewInFlight(),
 		driverOptions: driverOptions,
+		locker: distributed_locker.NewKubernetesLocker(
+			dynamic.NewForConfigOrDie(ctrl.GetConfigOrDie()),
+			schema.GroupVersionResource{
+				Group:    "",
+				Version:  "v1",
+				Resource: "configmaps",
+			},
+			driverOptions.KubeFilerLockerConfigMapName,
+			driverOptions.KubeFilerOperatorNameSpace,
+		),
 	}
 }
 
@@ -123,12 +144,7 @@ func (d *controllerService) getPvc(ctx context.Context, ns, name string) (*corev
 }
 
 func newCreateVolumeResponse(namespace, kubeFilerExportName string) (*csi.CreateVolumeResponse, error) {
-	cteraVolumeID := KubeFilerVolumeID{
-		Namespace:           namespace,
-		KubeFilerExportName: kubeFilerExportName,
-	}
-
-	volumeID, err := cteraVolumeID.ToVolumeID()
+	volumeID, err := NewKubeFilerVolumeID(namespace, kubeFilerExportName).ToVolumeID()
 	if err != nil {
 		return nil, err
 	}
@@ -155,42 +171,64 @@ func (d *controllerService) ControllerPublishVolume(ctx context.Context, req *cs
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	lockName := fmt.Sprintf("%s/%s", kubeFilerVolumeID.Namespace, kubeFilerVolumeID.KubeFilerExportName)
+	_, lockHandle, err := d.locker.Acquire(lockName, lockgate.AcquireOptions{Timeout: time.Second * lockTimeoutSeconds})
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	defer func() {
+		err := d.locker.Release(lockHandle)
+		if err != nil {
+			klog.Error(err, "Failed to release the lock")
+		}
+	}()
+
 	nodeAddress := req.GetNodeId()
 	if len(nodeAddress) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Node Id is empty")
 	}
 
-	filerAddress, filerUsername, filerPassword, err := d.getFilerLoginDetails(ctx, kubeFilerVolumeID.Namespace, kubeFilerVolumeID.KubeFilerExportName)
+	kubeFilerExport, err := internal.GetKubeFilerExport(ctx, d.kubeClient, kubeFilerVolumeID.Namespace, kubeFilerVolumeID.KubeFilerExportName)
 	if err != nil {
+		klog.Error(err, "Failed to get KubeFilerExport")
 		return nil, err
 	}
 
-	client, err := GetAuthenticatedCteraClient(ctx, filerAddress, filerUsername, filerPassword)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	if kubeFilerExport.Status.Attachments == nil {
+		kubeFilerExport.Status.Attachments = make(map[string]kubefilerv1alpha1.VolumeIDMap)
 	}
 
-	share, err := client.GetShareSafe(kubeFilerVolumeID.KubeFilerExportName)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+	if _, ok := kubeFilerExport.Status.Attachments[nodeAddress]; !ok {
 
-	if share == nil {
-		return nil, status.Error(codes.NotFound, "Volume not found")
-	}
-
-	for _, trustedNfsClient := range share.GetTrustedNfsClients() {
-		if trustedNfsClient.GetAddress() == nodeAddress && trustedNfsClient.GetNetmask() == netmask && trustedNfsClient.GetPerm() == permissions {
-			return &csi.ControllerPublishVolumeResponse{}, nil
+		filerAddress, filerUsername, filerPassword, err := d.getFilerLoginDetails(ctx, kubeFilerVolumeID.Namespace, kubeFilerVolumeID.KubeFilerExportName)
+		if err != nil {
+			return nil, err
 		}
+
+		client, err := GetAuthenticatedCteraClient(ctx, filerAddress, filerUsername, filerPassword)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+		share, err := client.GetShareSafe(kubeFilerVolumeID.KubeFilerExportName)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+		if share == nil {
+			return nil, status.Error(codes.NotFound, "Volume not found")
+		}
+
+		err = client.AddTrustedNfsClient(kubeFilerVolumeID.KubeFilerExportName, nodeAddress, netmask, permissions)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+		kubeFilerExport.Status.Attachments[nodeAddress] = make(kubefilerv1alpha1.VolumeIDMap)
 	}
 
-	err = client.AddTrustedNfsClient(kubeFilerVolumeID.KubeFilerExportName, nodeAddress, netmask, permissions)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	return &csi.ControllerPublishVolumeResponse{}, nil
+	kubeFilerExport.Status.Attachments[nodeAddress][kubeFilerVolumeID.ID] = true
+	return &csi.ControllerPublishVolumeResponse{}, d.kubeClient.Status().Update(ctx, kubeFilerExport)
 }
 
 func (d *controllerService) ControllerUnpublishVolume(ctx context.Context, req *csi.ControllerUnpublishVolumeRequest) (*csi.ControllerUnpublishVolumeResponse, error) {
@@ -200,43 +238,82 @@ func (d *controllerService) ControllerUnpublishVolume(ctx context.Context, req *
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
+	lockName := fmt.Sprintf("%s/%s", kubeFilerVolumeID.Namespace, kubeFilerVolumeID.KubeFilerExportName)
+	_, lockHandle, err := d.locker.Acquire(lockName, lockgate.AcquireOptions{Timeout: time.Second * lockTimeoutSeconds})
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	defer func() {
+		err := d.locker.Release(lockHandle)
+		if err != nil {
+			klog.Error(err, "Failed to release the lock")
+		}
+	}()
+
 	nodeAddress := req.GetNodeId()
 	if len(nodeAddress) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Node Id is empty")
 	}
 
-	filerAddress, filerUsername, filerPassword, err := d.getFilerLoginDetails(ctx, kubeFilerVolumeID.Namespace, kubeFilerVolumeID.KubeFilerExportName)
+	kubeFilerExport, err := internal.GetKubeFilerExport(ctx, d.kubeClient, kubeFilerVolumeID.Namespace, kubeFilerVolumeID.KubeFilerExportName)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			klog.Warning("Filer details were not found - probably already deleted")
-			return &csi.ControllerUnpublishVolumeResponse{}, nil
-		}
+		klog.Error(err, "Failed to get KubeFilerExport")
 		return nil, err
 	}
 
-	client, err := GetAuthenticatedCteraClient(ctx, filerAddress, filerUsername, filerPassword)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	if kubeFilerExport.Status.Attachments == nil {
+		klog.Warning("Attachments map is empty - probably already removed")
+		return &csi.ControllerUnpublishVolumeResponse{}, nil
 	}
 
-	share, err := client.GetShareSafe(kubeFilerVolumeID.KubeFilerExportName)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+	volumeIDs, ok := kubeFilerExport.Status.Attachments[nodeAddress]
+	if !ok || volumeIDs == nil {
+		klog.Warning("Node is not in attachments map - probably already removed")
+		return &csi.ControllerUnpublishVolumeResponse{}, nil
 	}
 
-	if share != nil {
-		for _, trustedNfsClient := range share.GetTrustedNfsClients() {
-			if trustedNfsClient.GetAddress() == nodeAddress && trustedNfsClient.GetNetmask() == netmask && trustedNfsClient.GetPerm() == permissions {
-				err = client.RemoveTrustedNfsClient(kubeFilerVolumeID.KubeFilerExportName, nodeAddress, netmask)
-				if err != nil {
-					return nil, status.Error(codes.Internal, err.Error())
+	volumeAttached, ok := volumeIDs[kubeFilerVolumeID.ID]
+	if !ok || !volumeAttached {
+		klog.Warning("Volume not in the Node's attachments map - probably already removed")
+		return &csi.ControllerUnpublishVolumeResponse{}, nil
+	}
+
+	delete(kubeFilerExport.Status.Attachments[nodeAddress], kubeFilerVolumeID.ID)
+	if len(kubeFilerExport.Status.Attachments[nodeAddress]) == 0 {
+		filerAddress, filerUsername, filerPassword, err := d.getFilerLoginDetails(ctx, kubeFilerVolumeID.Namespace, kubeFilerVolumeID.KubeFilerExportName)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				klog.Warning("Filer details were not found - probably already deleted")
+				return &csi.ControllerUnpublishVolumeResponse{}, nil
+			}
+			return nil, err
+		}
+
+		client, err := GetAuthenticatedCteraClient(ctx, filerAddress, filerUsername, filerPassword)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+		share, err := client.GetShareSafe(kubeFilerVolumeID.KubeFilerExportName)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+
+		if share != nil {
+			for _, trustedNfsClient := range share.GetTrustedNfsClients() {
+				if trustedNfsClient.GetAddress() == nodeAddress && trustedNfsClient.GetNetmask() == netmask && trustedNfsClient.GetPerm() == permissions {
+					err = client.RemoveTrustedNfsClient(kubeFilerVolumeID.KubeFilerExportName, nodeAddress, netmask)
+					if err != nil {
+						return nil, status.Error(codes.Internal, err.Error())
+					}
+					break
 				}
-				break
 			}
 		}
+		delete(kubeFilerExport.Status.Attachments, nodeAddress)
 	}
 
-	return &csi.ControllerUnpublishVolumeResponse{}, nil
+	return &csi.ControllerUnpublishVolumeResponse{}, d.kubeClient.Status().Update(ctx, kubeFilerExport)
 }
 
 func (d *controllerService) ControllerGetCapabilities(ctx context.Context, req *csi.ControllerGetCapabilitiesRequest) (*csi.ControllerGetCapabilitiesResponse, error) {

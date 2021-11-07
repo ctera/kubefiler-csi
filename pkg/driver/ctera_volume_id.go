@@ -21,11 +21,23 @@ package driver
 import (
 	"encoding/json"
 	"errors"
+
+	"github.com/pborman/uuid"
 )
 
 type KubeFilerVolumeID struct {
+	ID                  string `json:"id"`
 	Namespace           string `json:"namespace"`
 	KubeFilerExportName string `json:"kubefiler_export_name"`
+}
+
+func NewKubeFilerVolumeID(namespace, kubeFilerExportName string) *KubeFilerVolumeID {
+	ret := KubeFilerVolumeID{
+		ID:                  uuid.NewUUID().String(),
+		Namespace:           namespace,
+		KubeFilerExportName: kubeFilerExportName,
+	}
+	return &ret
 }
 
 func (c *KubeFilerVolumeID) ToVolumeID() (*string, error) {

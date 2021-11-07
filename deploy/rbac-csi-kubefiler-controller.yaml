@@ -40,23 +40,20 @@ rules:
     resources: ["volumeattachments/status"]
     verbs: ["patch"]
   - apiGroups: ["kubefiler.ctera.com"]
-    resources:
-      - kubefilerexports
-      - kubefilers
-    verbs:
-      - get
-  - apiGroups:
-    - ""
-    resources:
-    - secrets
-    verbs:
-    - get
-  - apiGroups:
-    - ""
-    resources:
-    - services
-    verbs:
-    - get
+    resources: ["kubefilers", "kubefilerexports"]
+    verbs: ["get"]
+  - apiGroups: ["kubefiler.ctera.com"]
+    resources: ["kubefilerexports/status"]
+    verbs: ["get", "update"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "patch", "update", "watch"]
 
 ---
 
